@@ -6,6 +6,7 @@ import mongoose from 'mongoose';
 // import userRoutes from './routes/userRoute';
 // import AIRoutes from './routes/AIRoutes';
 // import commentRoutes from './routes/commentRoute';
+// import '../src/jobs'; //trigger the jobs to run
 import swaggerJsDoc from "swagger-jsdoc";
 import swaggerUI from "swagger-ui-express";
 import path from 'path';
