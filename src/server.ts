@@ -1,11 +1,10 @@
 import express, { Express } from "express";
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-// import authRoutes from './routes/authRoute';
-// import postRoutes from './routes/postRoute';
-// import userRoutes from './routes/userRoute';
-// import AIRoutes from './routes/AIRoutes';
-// import commentRoutes from './routes/commentRoute';
+import authRoutes from './routes/authRoute';
+import taskRoutes from './routes/taskRoute';
+import userRoutes from './routes/userRoute';
+import reviewRoutes from './routes/reviewRoute';
 // import '../src/jobs'; //trigger the jobs to run
 import swaggerJsDoc from "swagger-jsdoc";
 import swaggerUI from "swagger-ui-express";
@@ -20,7 +19,7 @@ const server = http.createServer(app); // Create HTTP server to handle socket.io
 
 // Middleware
 app.use(cors({
-  origin: ["node102.cs.colman.ac.il",process.env.FRONTEND_URL || 'http://localhost:5173'],
+  origin: ["0.0.0.0",process.env.DOMAIN_URL || 'http://localhost:5173'],
   credentials: true,
 }));
 app.use(express.json());
@@ -32,15 +31,14 @@ app.use((req, res, next) => {
   next();
 });
 // Static files for images
-app.use('/uploads', express.static(path.join(__dirname, '../../public/uploads')));
-app.use(express.static(path.resolve(__dirname , '..' , '../front')))
+// app.use('/uploads', express.static(path.join(__dirname, '../../public/uploads')));
+// app.use(express.static(path.resolve(__dirname , '..' , '../front')))
 
 // Routes
-// app.use('/auth', authRoutes);
-// app.use('/posts', postRoutes);
-// app.use('/comments', commentRoutes);
-// app.use('/users', userRoutes)
-// app.use('/AI' , AIRoutes)
+app.use('/auth', authRoutes);
+app.use('/reviews', reviewRoutes);
+app.use('/tasks', taskRoutes);
+app.use('/users', userRoutes)
 
 const options = {
   definition: {
@@ -50,7 +48,7 @@ const options = {
       version: "1.0.0",
       description: "REST server including authentication using JWT",
     },
-    servers: [{ url: "https://10.10.246.102", },{url : process.env.DOMAIN_URL}],
+    servers: [{ url: "http://localhost:5000", },{url : process.env.DOMAIN_URL}],
   },
   apis: ["./src/routes/*.ts"],
 };

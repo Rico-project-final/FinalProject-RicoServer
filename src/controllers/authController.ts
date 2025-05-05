@@ -155,7 +155,7 @@ export const login = async (req: LoginRequest, res: Response): Promise<any> => {
 
 // JWT Generator
 export const generateAccessToken = (userId: string, role: string): string => {
-    return jwt.sign({ userId, role }, secret, { expiresIn });
+    return jwt.sign({ userId, role }, secret, { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] });
 };
 
 export default { register, login, googleSignIn };

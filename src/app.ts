@@ -1,5 +1,4 @@
 import initApp from "./server";
-// import { initializeSocket } from '../src/services/socketIO'; // Import socketService
 import https from "https"
 import fs from "fs"
 
@@ -9,7 +8,7 @@ initApp().then(({app , server}) => {
   if(process.env.NODE_ENV !== "production"){
 //   initializeSocket(server); // This will initialize the Socket.io functionality
   server.listen(port, () => {
-    console.log(`QueRico app listening at http://localhost:${port}`);
+    console.log(`Rico app listening at http://localhost:${port}`);
   });
 }
 // else{
@@ -20,7 +19,7 @@ initApp().then(({app , server}) => {
 //   const httpsServer = https.createServer(prop,app)
 // //   initializeSocket(httpsServer)
 //   httpsServer.listen(port , '0.0.0.0',   () => {
-//     console.log(`QueRico app listening at https://localhost:${port}`);
+//     console.log(`Rico app listening at https://localhost:${port}`);
 //   });
 // }
 });

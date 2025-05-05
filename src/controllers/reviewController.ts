@@ -24,7 +24,7 @@ export const createReview = async (req: Request & { userId?: string }, res: Resp
 };
 
 // Get all reviews (admin-only)
-export const getAllReviews = async (_req: Request, res: Response):Promise<any> => {
+export const getAllReviews = async (req: Request, res: Response):Promise<any> => {
     try {
         const reviews = await Review.find().populate('userId', 'name email');
         res.status(200).json(reviews);
