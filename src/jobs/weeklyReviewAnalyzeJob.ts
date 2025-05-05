@@ -1,6 +1,5 @@
 // jobs/weeklyJob.ts
 import agenda from './agendaThread';
-
 agenda.define('weekly report job', async (job) => {
   console.log('✅ Weekly job running at:', new Date());
 
