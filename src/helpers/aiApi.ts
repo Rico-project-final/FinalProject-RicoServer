@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { IReview } from '../models/reviewModel';
+import { Review , IReview } from '../models/reviewModel';
 import { IReviewAnalysis, ReviewAnalysis } from '../models/reviewAnalysisModel';
 import { ITask, Task } from '../models/taskModel';
 import mongoose from 'mongoose';
@@ -120,6 +120,7 @@ class AIAnalysisAPI {
 
       // Save the document
       await reviewAnalysis.save();
+      await Review.findByIdAndUpdate(review.id, { isAnalyzed: true });
       
       // If we have a task recommendation, create a task
       if (analysis.taskRecommendation) {

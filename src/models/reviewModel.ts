@@ -5,6 +5,7 @@ id: mongoose.Types.ObjectId;
 userId?: mongoose.Types.ObjectId | null;
 text : string;
 category: 'food' | 'service' | 'overall';
+isAnalyzed: boolean;
 }
 
 const reviewSchema = new Schema<IReview>({
@@ -23,8 +24,12 @@ category: {
     enum: ['food', 'service', 'overall'],
     required: true,
 },
+isAnalyzed: {
+    type: Boolean,
+    default: false,
+  },
 }, {
-
+    timestamps: true
 })
 
 export const Review = mongoose.model<IReview>('Review', reviewSchema);
