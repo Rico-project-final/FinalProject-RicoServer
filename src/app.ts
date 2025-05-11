@@ -2,12 +2,14 @@ import initApp from "./server";
 import https from "https"
 import fs from "fs"
 import agenda from '../src/jobs/agendaThread';
-import '../src/jobs/weeklyReviewAnalyzeJob'; // make sure job is loaded
+import '../src/jobs/weeklyReviewAnalyzeJob';
+import '../src/jobs/dailyTaskManager'; 
+import { initializeSocket } from './socket';
 
-
-const port = Number(process.env.PORT); // Convert port to a number
+const port = Number(process.env.PORT); 
 
 initApp().then(async ({app , server}) => {
+  initializeSocket(server);
   if(process.env.NODE_ENV !== "production"){
   server.listen(port, () => {
     console.log(`Rico app listening at http://localhost:${port}`);
@@ -24,10 +26,12 @@ initApp().then(async ({app , server}) => {
 //     console.log(`Rico app listening at https://localhost:${port}`);
 //   });
 // }
+try {
+  await agenda.start();
+  console.log('📅 Agenda started successfully');
+} catch (err) {
+  console.error('❌ Failed to start Agenda:', err);
+}
 
-await agenda.start();
-await agenda.cancel({ name: 'weekly review analyze' }); // avoid duplicates
-await agenda.every('0 9 * * 1', 'weekly review analyze'); // every Monday 9 AM
-console.log('📅 Agenda started and weekly review analyze job scheduled.');
 });
 

@@ -5,7 +5,6 @@ import authRoutes from './routes/authRoute';
 import taskRoutes from './routes/taskRoute';
 import userRoutes from './routes/userRoute';
 import reviewRoutes from './routes/reviewRoute';
-// import '../src/jobs'; //trigger the jobs to run
 import swaggerJsDoc from "swagger-jsdoc";
 import swaggerUI from "swagger-ui-express";
 import path from 'path';
