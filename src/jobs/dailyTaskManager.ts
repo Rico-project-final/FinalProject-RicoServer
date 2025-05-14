@@ -40,6 +40,7 @@ agenda.define('daily task manager', async () => {
 });
 
 (async () => {
+   await agenda.start();
     await agenda.cancel({ name: 'daily task reminder' });
     await agenda.every('0 8 * * *', 'daily task reminder'); // daily at 8 AM
   })();

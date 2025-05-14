@@ -16,6 +16,7 @@ agenda.define('daily review analyze', async () => {
 
 
 (async () => {
+   await agenda.start();
   await agenda.cancel({ name: 'weekly review analyze' });
   await agenda.every('0 9 * * 1', 'weekly review analyze'); // Monday 9 AM
 })();

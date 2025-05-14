@@ -26,12 +26,12 @@ initApp().then(async ({app , server}) => {
 //     console.log(`Rico app listening at https://localhost:${port}`);
 //   });
 // }
-try {
-  await agenda.start();
-  console.log('📅 Agenda started successfully');
-} catch (err) {
-  console.error('❌ Failed to start Agenda:', err);
-}
+// try {
+//   await agenda.start();
+//   console.log('📅 Agenda started successfully');
+// } catch (err) {
+//   console.error('❌ Failed to start Agenda:', err);
+// }
 
 });
 
