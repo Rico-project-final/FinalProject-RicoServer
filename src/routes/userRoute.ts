@@ -5,6 +5,7 @@ import userController from '../controllers/userController';
 
 const router = express.Router();
 
+router.get('/dashboard', userController.getDashboard);
 router.get('/getAll', userController.getAllUsers);
 router.get('/:userId', userController.getUserById);
 
