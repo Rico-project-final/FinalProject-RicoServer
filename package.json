@@ -30,6 +30,7 @@
     "typescript": "^5.8.3"
   },
   "scripts": {
-    "dev": "cp .env.dev .env && nodemon ./src/app.ts"
+    "dev": "cp .env.dev .env && nodemon ./src/app.ts",
+    "devRemote" : "cp .env.devRemote .env && nodemon ./src/app.ts"
   }
 }
