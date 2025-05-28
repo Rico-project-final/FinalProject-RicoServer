@@ -4,7 +4,7 @@ export interface IReview {
 id: mongoose.Types.ObjectId;
 userId?: mongoose.Types.ObjectId | null;
 text : string;
-category: 'food' | 'service' | 'overall';
+category?: 'food' | 'service' | 'overall';
 isAnalyzed: boolean;
 }
 
@@ -22,7 +22,7 @@ text: {
 category: {
     type: String,
     enum: ['food', 'service', 'overall'],
-    required: true,
+    required: false,
 },
 isAnalyzed: {
     type: Boolean,

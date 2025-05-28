@@ -83,7 +83,7 @@ export const googleSignIn = async (req: Request, res: Response): Promise<any> =>
 // User Registration
 export const register = async (req: RegisterRequest, res: Response): Promise<any> => {
     try {
-        const { name, email, password, phone } = req.body;
+        const { name, email, password, phone = '' } = req.body;
 
         const existingUser = await User.findOne({ email });
         if (existingUser) {
