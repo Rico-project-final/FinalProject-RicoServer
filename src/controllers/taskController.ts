@@ -80,16 +80,16 @@ export const deleteTask = async (req: Request& { userId?: string }, res: Respons
 // MARK task as completed
 export const completeTask = async (req: Request& { userId?: string }, res: Response):Promise<any> => {
   const { taskId } = req.params;
-  try {
-    const completedTask = await Task.findOneAndUpdate(
-      { _id: taskId},
-      { isCompleted: true },
-      { new: true }
-    );
-    if (!completedTask) {
-      return res.status(404).json({ message: 'Task not found' });
+    try {
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
     }
-    res.status(200).json(completedTask);
+
+    task.isCompleted = !task.isCompleted;
+    await task.save();
+
+    res.status(200).json(task);
   } catch (error) {
     res.status(500).json({ message: 'Error completing task', error });
   }
