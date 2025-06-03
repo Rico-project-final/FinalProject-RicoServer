@@ -10,5 +10,6 @@ router.use(authenticateJwt);
 router.use(checkAdmin); 
 router.get('/getAll', reviewAnalysisController.getAllReviewsAnalasis);
 router.get('/:reviewId', reviewAnalysisController.getAnalasisById);
+router.post('/update/:reviewId' ,reviewAnalysisController.updateReviewAnalysis );
 
 export default router;
