@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Review } from '../models/reviewModel';
+import agenda from '../jobs/agendaThread';
 
 // Create a review (guest or authenticated user)
 export const createReview = async (req: Request & { userId?: string }, res: Response):Promise<any> => {
@@ -33,6 +34,25 @@ export const getAllReviews = async (req: Request, res: Response):Promise<any> =>
         res.status(500).json({ message: 'Error fetching reviews' });
     }
 };
+
+
+
+export const triggerWeeklyAnalyze = async (req: Request, res: Response): Promise<any> => {
+  try {
+    
+
+      await agenda.now("weekly review analyze", {});
+    
+
+    res.status(200).json({
+      message: `Triggered weekly review analyze`,
+    });
+  } catch (error) {
+    console.error('Trigger Agenda jobs error:', error);
+    res.status(500).json({ message: 'Error triggering Agenda jobs' });
+  }
+};
+
 
 // Get a review by ID (admin-only)
 export const getReviewById = async (req: Request, res: Response):Promise<any> => {
@@ -72,5 +92,6 @@ export default {
     createReview,
     getAllReviews,
     getReviewById,
-    deleteReviewById
+    deleteReviewById,
+    triggerWeeklyAnalyze
 };

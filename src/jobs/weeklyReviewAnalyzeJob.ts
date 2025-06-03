@@ -8,8 +8,8 @@ if (!process.env.OPEN_AI_API_KEY) {
   throw new Error('OPEN_AI_API_KEY is not defined in the environment variables.');
 }
 const aiAnalysisAPI = new AIAnalysisAPI(process.env.OPEN_AI_API_KEY);
-agenda.define('daily review analyze', async () => {
-  console.log('✅ daily job running at:', new Date());
+agenda.define('weekly review analyze', async () => {
+  console.log('✅ weekly job running at:', new Date());
   const Reviews = await Review.find({ isAnalyzed: false });
   aiAnalysisAPI.batchAnalyzeReviews(Reviews);
 });

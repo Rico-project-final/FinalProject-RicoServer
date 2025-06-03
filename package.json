@@ -31,6 +31,6 @@
   },
   "scripts": {
     "dev": "cp .env.dev .env && nodemon ./src/app.ts",
-    "devRemote" : "cp .env.devRemote .env && nodemon ./src/app.ts"
+    "devRemote": "cp .env.devRemote .env && nodemon ./src/app.ts"
   }
 }
