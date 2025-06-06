@@ -32,7 +32,6 @@ app.use((req, res, next) => {
 });
 // Static files for images
 // app.use('/uploads', express.static(path.join(__dirname, '../../public/uploads')));
-// app.use(express.static(path.resolve(__dirname , '..' , '../front')))
 
 // Routes
 app.use('/auth', authRoutes);
@@ -56,9 +55,13 @@ const options = {
 const specs = swaggerJsDoc(options);
 
 app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(specs));
-// app.use("*" , (req,res)=>{
-//   res.sendFile(path.resolve(__dirname , '..' , '../front/index.html'))
-// })
+app.use(express.static(path.resolve(__dirname , '..' , 'front')))
+
+app.use(`/*splat` , (req,res)=>{
+  res.sendFile(path.resolve(__dirname, '..', 'front', 'index.html'))
+})
+
+
 // Connect to MongoDB
 
 const db = mongoose.connection;

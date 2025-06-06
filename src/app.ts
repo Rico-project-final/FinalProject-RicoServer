@@ -2,8 +2,8 @@ import initApp from "./server";
 import https from "https"
 import fs from "fs"
 // import agenda from '../src/jobs/agendaThread';
-import '../src/jobs/weeklyReviewAnalyzeJob';
-import '../src/jobs/dailyTaskManager'; 
+import './jobs/weeklyReviewAnalyzeJob';
+import './jobs/dailyTaskManager'; 
 // import { initializeSocket } from './socket';
 import path from 'path';
 
@@ -19,8 +19,8 @@ initApp().then(async ({app , server}) => {
 }
 else{
   const prop = {
-     key : fs.readFileSync(path.join(__dirname, '../certs/server.key')),
-     cert : fs.readFileSync(path.join(__dirname, '../certs/server.crt'))
+     key : fs.readFileSync(path.join(__dirname, '../certs/myserver.key')),
+     cert : fs.readFileSync(path.join(__dirname, '../certs/CSB.crt'))
   }
   const httpsServer = https.createServer(prop,app)
 //   initializeSocket(httpsServer)
