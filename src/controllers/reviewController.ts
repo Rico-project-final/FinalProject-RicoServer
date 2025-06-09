@@ -23,7 +23,7 @@ export const createReview = async (req: Request & { userId?: string }, res: Resp
         res.status(500).json({ message: 'Error creating review' });
     }
 };
-
+ //TODO :: only by the businessId -  got from JWT
 // Get all reviews (admin-only)
 export const getAllReviews = async (req: Request, res: Response):Promise<any> => {
     try {

@@ -1,0 +1,1 @@
+//TODO :: implement code to generate QR codes for using RICO

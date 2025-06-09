@@ -3,6 +3,7 @@ import { User } from '../models/userModel';
 import { Review } from '../models/reviewModel';
 import { Task } from '../models/taskModel';
 
+//TODO ::  only by the businessId -  got from JWT , fix it to be only for customers
 // Get all users (for admin or system use)
 export const getAllUsers = async (req: Request, res: Response): Promise<any> => {
     try {
@@ -76,6 +77,7 @@ export const deleteProfile = async (req: Request & { userId?: string }, res: Res
         res.status(500).json({ message: 'Error deleting profile' });
     }
 };
+//TODO ::  only by the businessId -  got from JWT
 const getDashboard = async (req: Request & { userId?: string }, res: Response): Promise<any> => {
     try{
         const totalClients = await User.countDocuments({ role: { $ne: 'admin' } });

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Task } from '../models/taskModel';
 
+//TODO ::  only by the businessId -  got from JWT
 // GET all tasks
 export const getAllTasks = async (req: Request& { userId?: string }, res: Response):Promise<any> => {
   try {

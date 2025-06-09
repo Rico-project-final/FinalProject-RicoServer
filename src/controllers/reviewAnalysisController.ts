@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { ReviewAnalysis } from '../models/reviewAnalysisModel';
 import mongoose from "mongoose";
 
-
+//TODO ::  only by the businessId -  got from JWT , add another method using pagination
 // Get all reviews (admin-only)
 export const getAllReviewsAnalasis = async (req: Request, res: Response):Promise<any> => {
     try {
