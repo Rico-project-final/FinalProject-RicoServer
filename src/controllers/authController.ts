@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { User } from '../models/userModel';
 import { OAuth2Client } from 'google-auth-library';
 import env from 'dotenv';
+import { Business } from '../models/BusinessModel';
 
 env.config();
 
@@ -28,8 +29,8 @@ interface LoginRequest extends Request {
     };
 }
 
-// Google Sign-In
-export const googleSignIn = async (req: Request, res: Response): Promise<any> => {
+// Google Sign-In for customers
+export const customerGoogleSignIn = async (req: Request, res: Response): Promise<any> => {
     try {
         const { credential } = req.body;
         if (!credential) {
@@ -78,6 +79,75 @@ export const googleSignIn = async (req: Request, res: Response): Promise<any> =>
         console.error('Google sign-in error:', error);
         return res.status(500).json({ error: 'Internal server error' });
     }
+};
+// Google Sign-In for businesses
+export const businessGoogleSignIn = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { credential, businessName, address, phone } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({ error: 'Missing Google credential' });
+    }
+
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      return res.status(400).json({ error: 'Invalid Google token' });
+    }
+
+    const { email, picture, name } = payload;
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      const randomPassword = Math.random().toString(36).slice(-8);
+      user = new User({
+        email,
+        name,
+        profileImage: picture || '',
+        password: randomPassword,
+        role: businessName ? 'admin' : 'customer',
+        businessId: null
+      });
+
+      user = await user.save();
+    }
+
+      const newBusiness = new Business({
+        BusinessName: businessName,
+        address,
+        phone,
+        ownerId: user._id,
+        reviews: []
+      });
+
+      const savedBusiness = await newBusiness.save();
+
+      await User.findByIdAndUpdate(user._id, { businessId: savedBusiness._id });
+    
+
+    const accessToken = generateAccessToken(user._id.toString(), user.businessId? user.businessId.toString() : user.role);
+
+    return res.status(200).json({
+      accessToken,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        profileImage: user.profileImage,
+        role: user.role,
+        businessId: user.businessId 
+      }
+    });
+
+  } catch (error) {
+    console.error('Google sign-in error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 };
 
 // User Registration
@@ -134,7 +204,8 @@ export const login = async (req: LoginRequest, res: Response): Promise<any> => {
             return res.status(401).json({ message: 'email or password incorrect' });
         }
 
-        const accessToken = generateAccessToken(user._id.toString(), user.role);
+        const accessToken = generateAccessToken(user._id.toString(), user.businessId? user.businessId.toString() : user.role);
+
 
         res.status(200).json({
             user: {
@@ -158,4 +229,4 @@ export const generateAccessToken = (userId: string, role: string): string => {
     return jwt.sign({ userId, role }, secret, { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] });
 };
 
-export default { register, login, googleSignIn };
+export default { register, login, customerGoogleSignIn , businessGoogleSignIn };

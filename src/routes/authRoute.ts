@@ -7,6 +7,7 @@ const router = express.Router();
 
 // Public routes
 router.post('/register', authController.register);
-router.post('/googleAuth', authController.googleSignIn);
+router.post('/customerGoogleAuth', authController.customerGoogleSignIn);
+router.post('/businessGoogleAuth', authController.businessGoogleSignIn);
 router.post('/login', authController.login);
 export default router;
