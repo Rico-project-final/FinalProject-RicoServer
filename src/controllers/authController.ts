@@ -13,11 +13,21 @@ const expiresIn = process.env.JWT_EXPIRES_IN ?? '1h';
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Interfaces
-interface RegisterRequest extends Request {
+interface RegisterUserRequest extends Request {
     body: {
         name: string;
         email: string;
         password: string;
+        phone?: string;
+    };
+}
+
+interface RegisterBusinessRequest extends Request {
+    body: {
+        name: string;
+        email: string;
+        password: string;
+        companyName: string;
         phone?: string;
     };
 }
@@ -81,9 +91,10 @@ export const customerGoogleSignIn = async (req: Request, res: Response): Promise
     }
 };
 // Google Sign-In for businesses
+//TODO:: change bussiness to be created before user
 export const businessGoogleSignIn = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { credential, businessName, address, phone } = req.body;
+    const { credential, businessName, phone } = req.body;
 
     if (!credential) {
       return res.status(400).json({ error: 'Missing Google credential' });
@@ -119,7 +130,6 @@ export const businessGoogleSignIn = async (req: Request, res: Response): Promise
 
       const newBusiness = new Business({
         BusinessName: businessName,
-        address,
         phone,
         ownerId: user._id,
         reviews: []
@@ -151,7 +161,7 @@ export const businessGoogleSignIn = async (req: Request, res: Response): Promise
 };
 
 // User Registration
-export const register = async (req: RegisterRequest, res: Response): Promise<any> => {
+export const registerUser = async (req: RegisterUserRequest, res: Response): Promise<any> => {
     try {
         const { name, email, password, phone = '' } = req.body;
 
@@ -188,6 +198,73 @@ export const register = async (req: RegisterRequest, res: Response): Promise<any
         res.status(500).json({ message: 'Error creating user', error });
     }
 };
+
+// Business Registration
+export const registerBusiness = async (req: RegisterBusinessRequest, res: Response): Promise<any> => {
+
+    try {
+        const { name, email, password, companyName, phone = ''} = req.body;
+
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ message: 'Email already exists' });
+        }
+
+        const newBusiness = new Business({
+            BusinessName: companyName,
+            phone,
+            reviews: []
+            });
+
+      const savedBusiness = await newBusiness.save();
+
+        let user = new User({
+            name,
+            email,
+            password,
+            phone,
+            companyName,
+            profileImage: '', // can be updated later
+            role: 'admin',
+            businessId: savedBusiness.id 
+        });
+
+        await user.save();
+
+        if (!user) {
+            const randomPassword = Math.random().toString(36).slice(-8);
+            user = new User({
+                email,
+                name,
+                profileImage: '',
+                password: randomPassword,
+                role: companyName ? 'admin' : 'customer',
+                businessId: savedBusiness.ownerId 
+        });
+
+    }
+
+      await User.findByIdAndUpdate(user._id, { businessId: savedBusiness._id });
+
+        const accessToken = generateAccessToken(user._id.toString(), user.role);
+
+        res.status(201).json({
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                profileImage: user.profileImage,
+                role: user.role
+            },
+            accessToken
+        });
+    } catch (error) {
+        console.error('Register business error:', error);
+        res.status(500).json({ message: 'Error creating business', error });
+    }
+
+}
 
 // User Login
 export const login = async (req: LoginRequest, res: Response): Promise<any> => {
@@ -229,4 +306,4 @@ export const generateAccessToken = (userId: string, role: string): string => {
     return jwt.sign({ userId, role }, secret, { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] });
 };
 
-export default { register, login, customerGoogleSignIn , businessGoogleSignIn };
+export default { registerUser, registerBusiness, login, customerGoogleSignIn , businessGoogleSignIn };

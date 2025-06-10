@@ -14,7 +14,6 @@ const businessSchema = new mongoose.Schema<IBusiness>({
 
   BusinessName: { type: String, required: true },
   reviews: [{ type: Schema.Types.ObjectId, ref: 'Review' }],
-  address: { type: String },
   phone: { type: String },
   ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 

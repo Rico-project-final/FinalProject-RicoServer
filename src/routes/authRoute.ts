@@ -6,9 +6,8 @@ import { uploadImage } from '../middleware/uploads';
 const router = express.Router();
 
 // Public routes
-router.post('/registerCustomer', authController.register);
-//TODO :: finish implementing business registration
-// router.post('/registerBusiness', authController.register);
+router.post('/registerCustomer', authController.registerUser);
+router.post('/registerBusiness', authController.registerBusiness);
 router.post('/customerGoogleAuth', authController.customerGoogleSignIn);
 router.post('/businessGoogleAuth', authController.businessGoogleSignIn);
 router.post('/login', authController.login);
