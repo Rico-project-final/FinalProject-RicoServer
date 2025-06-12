@@ -1,6 +1,12 @@
 import { Request, Response } from 'express';
 import { Business } from '../models/BusinessModel';
 import {User} from '../models/userModel';
+import { generateBusinessQR } from '../utils/QRGenerator';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const DOMAIN_URL = process.env.DOMAIN_URL ?? 'http://localhost:5173';
 
 // GET all 
 export const getAllbusinesses = async (req: Request& { userId?: string }, res: Response):Promise<any> => {
@@ -118,6 +124,28 @@ export const deleteBusiness = async (req: Request& { userId?: string }, res: Res
     res.status(500).json({ message: 'Error deleting task', error });
   }
 };
+export const getQRCodeForBusiness = async (req: Request & { businessId?: string }, res: Response): Promise<any> => {
+  try {
+    const businessId = req.businessId;
+
+    if (!businessId) {
+      return res.status(400).json({ error: 'Missing businessId from token' });
+    }
+
+    const qrBuffer = await generateBusinessQR(businessId, DOMAIN_URL);
+    const base64Image = qrBuffer.toString('base64');
+
+    res.status(200).json({
+      message: 'QR code generated successfully',
+      image: `data:image/png;base64,${base64Image}`
+    });
+  } catch (error) {
+    console.error('QR generation failed:', error);
+    res.status(500).json({ error: 'Failed to generate QR code' });
+  }
+};
+
+
 
 export default {
   getAllbusinesses,
@@ -125,4 +153,5 @@ export default {
   createBusiness,
   updateBusiness,
   deleteBusiness,
+  getQRCodeForBusiness
 };

@@ -94,7 +94,7 @@ export const customerGoogleSignIn = async (req: Request, res: Response): Promise
 //TODO:: change bussiness to be created before user
 export const businessGoogleSignIn = async (req: Request, res: Response): Promise<any> => {
   try {
-    const { credential, businessName, phone } = req.body;
+    const { credential, businessName, phone, password } = req.body;
 
     if (!credential) {
       return res.status(400).json({ error: 'Missing Google credential' });
@@ -112,7 +112,17 @@ export const businessGoogleSignIn = async (req: Request, res: Response): Promise
 
     const { email, picture, name } = payload;
 
+    //HERE Google end his job
     let user = await User.findOne({ email });
+
+        const newBusiness = new Business({
+        BusinessName: businessName,
+        phone,
+        reviews: []
+      });
+
+      const savedBusiness = await newBusiness.save();
+
 
     if (!user) {
       const randomPassword = Math.random().toString(36).slice(-8);
@@ -120,28 +130,19 @@ export const businessGoogleSignIn = async (req: Request, res: Response): Promise
         email,
         name,
         profileImage: picture || '',
-        password: randomPassword,
+        password: password || randomPassword,
         role: businessName ? 'admin' : 'customer',
-        businessId: null
+        businessId: savedBusiness._id 
       });
 
       user = await user.save();
     }
 
-      const newBusiness = new Business({
-        BusinessName: businessName,
-        phone,
-        ownerId: user._id,
-        reviews: []
-      });
 
-      const savedBusiness = await newBusiness.save();
-
-      await User.findByIdAndUpdate(user._id, { businessId: savedBusiness._id });
-    if (!user.businessId)
-    {   
-        return res.status(403).json({ error: 'error while logging in - missing bussinesId' });
-    }
+    //add here updating business
+      await Business.findByIdAndUpdate(savedBusiness._id, {
+  ownerId: user._id
+});
 
     const accessToken = generateAccessToken(user._id.toString(), user.businessId.toString());
 
