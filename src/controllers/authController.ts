@@ -138,9 +138,12 @@ export const businessGoogleSignIn = async (req: Request, res: Response): Promise
       const savedBusiness = await newBusiness.save();
 
       await User.findByIdAndUpdate(user._id, { businessId: savedBusiness._id });
-    
+    if (!user.businessId)
+    {   
+        return res.status(403).json({ error: 'error while logging in - missing bussinesId' });
+    }
 
-    const accessToken = generateAccessToken(user._id.toString(), user.businessId? user.businessId.toString() : user.role);
+    const accessToken = generateAccessToken(user._id.toString(), user.businessId.toString());
 
     return res.status(200).json({
       accessToken,
@@ -239,14 +242,15 @@ export const registerBusiness = async (req: RegisterBusinessRequest, res: Respon
                 profileImage: '',
                 password: randomPassword,
                 role: companyName ? 'admin' : 'customer',
-                businessId: savedBusiness.ownerId 
+                businessId: savedBusiness.id 
         });
 
     }
 
       await User.findByIdAndUpdate(user._id, { businessId: savedBusiness._id });
 
-        const accessToken = generateAccessToken(user._id.toString(), user.role);
+        const accessToken = generateAccessToken(user._id.toString(), user.businessId.toString());
+        console.log('bussinesId Token:', user.businessId.toString());
 
         res.status(201).json({
             user: {
@@ -302,8 +306,13 @@ export const login = async (req: LoginRequest, res: Response): Promise<any> => {
 };
 
 // JWT Generator
-export const generateAccessToken = (userId: string, role: string): string => {
-    return jwt.sign({ userId, role }, secret, { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] });
+export const generateAccessToken = (userId: string, role: string, businessId?: string): string => {
+  return jwt.sign(
+    { userId, businessId: businessId ?? role },
+    secret,
+    { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] }
+  );
 };
+
 
 export default { registerUser, registerBusiness, login, customerGoogleSignIn , businessGoogleSignIn };

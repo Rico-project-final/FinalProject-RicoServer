@@ -1,14 +1,22 @@
 import { Request, Response } from 'express';
 import { Task } from '../models/taskModel';
 
-//TODO ::  only by the businessId -  got from JWT
 // GET all tasks
-export const getAllTasks = async (req: Request& { userId?: string }, res: Response):Promise<any> => {
+export const getAllTasks = async (req: Request, res: Response): Promise<any> => {
   try {
-    const tasks = await Task.find({}).populate('relatedReview');
+    // @ts-ignore - businessId is injected via JWT middleware
+    const businessId = req.businessId;
+
+    if (!businessId) {
+      return res.status(400).json({ message: 'Missing businessId from request' });
+    }
+
+    const tasks = await Task.find({ businessId }).populate('relatedReview');
+
     res.status(200).json(tasks);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching tasks', error });
+    console.error('Get all tasks error:', error);
+    res.status(500).json({ message: 'Error fetching tasks' });
   }
 };
 

@@ -2,17 +2,32 @@ import { Request, Response } from 'express';
 import { User } from '../models/userModel';
 import { Review } from '../models/reviewModel';
 import { Task } from '../models/taskModel';
+import mongoose from 'mongoose';
 
-//TODO ::  only by the businessId -  got from JWT , fix it to be only for customers
-// Get all users (for admin or system use)
+// Get all customers
 export const getAllUsers = async (req: Request, res: Response): Promise<any> => {
-    try {
-        const users = await User.find().select('-password');
-        res.status(200).json(users);
-    } catch (error) {
-        console.error('Get all users error:', error);
-        res.status(500).json({ message: 'Error fetching users' });
+  try {
+    // @ts-ignore - businessId is injected via JWT middleware
+    const businessId = req.businessId;
+
+    if (!businessId) {
+      return res.status(400).json({ message: 'Missing businessId from request' });
     }
+
+    // Step 1: Get distinct non-null userIds from reviews
+    const userIds = await Review.distinct('userId', {
+      businessId,
+      userId: { $ne: null },
+    });
+
+    // Step 2: Fetch user documents for those IDs
+    const users = await User.find({ _id: { $in: userIds } }).select('-password'); // Exclude sensitive fields
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({ message: 'Error fetching users' });
+  }
 };
 
 // Get specific user by ID (public or protected, depending on route use)
@@ -77,27 +92,41 @@ export const deleteProfile = async (req: Request & { userId?: string }, res: Res
         res.status(500).json({ message: 'Error deleting profile' });
     }
 };
-//TODO ::  only by the businessId -  got from JWT
-const getDashboard = async (req: Request & { userId?: string }, res: Response): Promise<any> => {
-    try{
-        const totalClients = await User.countDocuments({ role: { $ne: 'admin' } });
-        const totalReviews = await Review.countDocuments();
-        const totalTasks = await Task.countDocuments();
-        
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-        const lastWeekReviews = await Review.find({
-        createdAt: { $gte: oneWeekAgo }
-        }).sort({ createdAt: -1 }).limit(10).populate('userId', 'name email');
+const getDashboard = async (req: Request, res: Response): Promise<any> => {
+  try {
+    // @ts-ignore - businessId injected by your JWT middleware
+    const businessId = req.businessId;
+    console.log('businessId:', businessId);
+    if (!businessId) {
+      return res.status(400).json({ message: 'Missing businessId from request' });
+    }
+
+    // Count non-admin users belonging to the business (assuming User has businessId too)
+    const totalClients = await User.countDocuments({
+      role: { $ne: 'admin' },
+      businessId
+    });
+
+    // Count reviews and tasks for the business
+    const totalReviews = await Review.countDocuments({ businessId });
+    const totalTasks = await Task.countDocuments({ businessId });
+
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    const lastWeekReviews = await Review.find({
+      businessId,
+      createdAt: { $gte: oneWeekAgo }
+    })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate('userId', 'name email');
 
     const startOfYear = new Date(new Date().getFullYear(), 0, 1);
+
     const reviewsByMonth = await Review.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: startOfYear }
-        }
-      },
+      { $match: { businessId: new mongoose.Types.ObjectId(businessId), createdAt: { $gte: startOfYear } } },
       {
         $group: {
           _id: {
@@ -116,12 +145,12 @@ const getDashboard = async (req: Request & { userId?: string }, res: Response): 
         name: months[i],
         food: 0,
         service: 0,
-        experience: 0,
+        overall: 0,  // fixed category name here
       });
     }
 
     reviewsByMonth.forEach(item => {
-      const index = item._id.month - 1; 
+      const index = item._id.month - 1;
       chartData[index][item._id.category] = item.count;
     });
 
@@ -133,11 +162,11 @@ const getDashboard = async (req: Request & { userId?: string }, res: Response): 
       chartData,
     });
 
-    }catch (error) {
-        console.error('Get dashboard error:', error);
-        res.status(500).json({ message: 'Error fetching dashboard' });
-    }
-}
+  } catch (error) {
+    console.error('Get dashboard error:', error);
+    res.status(500).json({ message: 'Error fetching dashboard' });
+  }
+};
 export default {
     getAllUsers,
     getUserById,
