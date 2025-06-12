@@ -18,7 +18,6 @@ export const authenticateJwt = (req: AuthRequest, res: Response, next: NextFunct
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as { userId: string , role?:string, businessId?: string };
     req.userId = decoded.userId;
-    console.log('decoded', decoded);
     if(decoded.businessId) {
       req.businessId = decoded.businessId;
 

@@ -1,17 +1,21 @@
 import { Request, Response } from 'express';
 import { ReviewAnalysis } from '../models/reviewAnalysisModel';
 
+
+interface AuthenticatedRequest extends Request {
+  userId?: string;
+  businessId?: string;
+}
 //TODO ::  add another method using pagination
 // Get all reviews (admin-only)
-export const getAllReviewsAnalasis = async (req: Request, res: Response): Promise<any> => {
+export const getAllReviewsAnalasis = async (req: AuthenticatedRequest, res: Response): Promise<any> => {
   try {
-    // @ts-ignore - businessId is injected via JWT middleware
-    const businessId = req.businessId;
+    const { businessId } = req;
 
     if (!businessId) {
       return res.status(400).json({ message: 'Missing businessId from request' });
     }
-
+    
     const reviews = await ReviewAnalysis.find({ businessId });
 
     res.status(200).json(reviews);
