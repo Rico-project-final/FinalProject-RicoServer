@@ -12,6 +12,8 @@ export interface IReviewAnalysis extends Document {
   isResolved: boolean; 
   createdAt: Date;
   updatedAt: Date;
+  businessId: mongoose.Types.ObjectId;
+  
 }
 
 const reviewAnalysisSchema = new Schema<IReviewAnalysis>({
@@ -52,6 +54,7 @@ const reviewAnalysisSchema = new Schema<IReviewAnalysis>({
     type: Boolean,
     default: false,
   },
+  businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true }
 }, {
   timestamps: true,
 });

@@ -5,12 +5,12 @@ import userController from '../controllers/userController';
 
 const router = express.Router();
 
+// Protected routes (require authentication)
+router.use(authenticateJwt);
 router.get('/dashboard', userController.getDashboard);
 router.get('/getAll', userController.getAllUsers);
 router.get('/:userId', userController.getUserById);
 
-// Protected routes (require authentication)
-router.use(authenticateJwt);
 
 router.get('/', userController.getProfile);
 router.post('/update', userController.updateProfile);

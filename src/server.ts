@@ -11,6 +11,7 @@ import path from 'path';
 import http from 'http';
 import cors from 'cors'
 import reviewAnalysisRoute from "./routes/reviewAnalysisRoute";
+import businessRoute from "./routes/businessRoute";
 
 dotenv.config();
 
@@ -37,7 +38,8 @@ app.use((req, res, next) => {
 // Routes
 app.use('/auth', authRoutes);
 app.use('/reviews', reviewRoutes);
-app.use('/analysis', reviewAnalysisRoute  )
+app.use('/analysis', reviewAnalysisRoute)
+app.use('/business', businessRoute);
 app.use('/tasks', taskRoutes);
 app.use('/users', userRoutes)
 

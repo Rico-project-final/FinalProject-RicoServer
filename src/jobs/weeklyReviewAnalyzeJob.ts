@@ -1,6 +1,6 @@
 import agenda from './agendaThread';
 import { Review } from '../models/reviewModel';
-import AIAnalysisAPI from '../helpers/aiApi'
+import AIAnalysisAPI from '../utils/aiApi'
 import dotenv from 'dotenv';
 dotenv.config();
 

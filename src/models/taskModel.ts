@@ -10,6 +10,8 @@ export interface ITask extends Document {
   priority?: 'low' | 'medium' | 'high';
   createdAt: Date;
   updatedAt: Date;
+  businessId: mongoose.Types.ObjectId;
+  
 }
 
 const taskSchema = new Schema<ITask>({
@@ -30,7 +32,8 @@ const taskSchema = new Schema<ITask>({
     type: String,
     enum: ['low', 'medium', 'high'],
     default: 'medium'
-  }
+  },
+  businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true }
 }, { timestamps: true });
 
 export const Task = mongoose.model<ITask>('Task', taskSchema);
