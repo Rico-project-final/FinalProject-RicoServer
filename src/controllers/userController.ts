@@ -93,19 +93,16 @@ export const deleteProfile = async (req: Request & { userId?: string }, res: Res
     }
 };
 
-const getDashboard = async (req: Request, res: Response): Promise<any> => {
+const getDashboard = async (req: Request & { businessId?: string }, res: Response): Promise<any> => {
   try {
-    // @ts-ignore - businessId injected by your JWT middleware
     const businessId = req.businessId;
     if (!businessId) {
       return res.status(400).json({ message: 'Missing businessId from request' });
     }
 
     // Count non-admin users belonging to the business (assuming User has businessId too)
-    const totalClients = await User.countDocuments({
-      role: { $ne: 'admin' },
-      businessId
-    });
+    const customerIds = await Review.distinct('userId', { businessId });
+    const totalClients = customerIds.length;
 
     // Count reviews and tasks for the business
     const totalReviews = await Review.countDocuments({ businessId });

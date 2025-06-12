@@ -11,8 +11,8 @@ interface AuthenticatedRequest extends Request {
 // Create a review
 export const createReview = async (req: AuthenticatedRequest, res: Response): Promise<any> => {
   try {
-    const { text, category } = req.body;
-    const { userId, businessId } = req;
+    const { text, category, businessId  } = req.body;
+    const { userId} = req;
 
     if (!text) {
       return res.status(400).json({ message: 'Missing required field: text' });
@@ -23,7 +23,7 @@ export const createReview = async (req: AuthenticatedRequest, res: Response): Pr
     }
 
     const review = new Review({
-      userId: userId || null,
+      userId: userId ,
       text,
       category,
       businessId

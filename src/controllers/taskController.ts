@@ -35,10 +35,12 @@ export const getTaskById = async (req: Request& { userId?: string }, res: Respon
 };
 
 // CREATE new task
-export const createTask = async (req: Request& { userId?: string }, res: Response):Promise<any> => {
+export const createTask = async (req: Request& { businessId?:string,userId?: string }, res: Response):Promise<any> => {
   const { title, description, relatedReview, dueDate, priority } = req.body;
+  const businessId = req.businessId;
   try {
     const newTask = new Task({
+      businessId,
       title,
       description,
       relatedReview,

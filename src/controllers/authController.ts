@@ -73,7 +73,10 @@ export const customerGoogleSignIn = async (req: Request, res: Response): Promise
             await user.save();
         }
 
-        const accessToken = generateAccessToken(user._id.toString(), user.role);
+        const accessToken = generateAccessToken(
+            user._id.toString(),
+            user.businessId ? user.businessId.toString() : user.role
+            );
 
         return res.status(200).json({
             accessToken,
