@@ -40,15 +40,14 @@ export const createReview = async (req: AuthenticatedRequest, res: Response): Pr
 // Get all reviews for a specific business
 export const getAllReviews = async (req: AuthenticatedRequest, res: Response): Promise<any> => {
   try {
-    console.log('in get all reviews')
     const { businessId } = req;
-
+ 
     if (!businessId) {
         console.error('Missing businessId from request');
       return res.status(400).json({ message: 'Missing businessId from request' });
     }
 
-    const reviews = await Review.find({ businessId }).populate('userId', 'name email');
+    const reviews = await Review.find({ businessId : businessId }).populate('userId', 'name email');
 
     res.status(200).json(reviews);
   } catch (error) {
@@ -58,13 +57,20 @@ export const getAllReviews = async (req: AuthenticatedRequest, res: Response): P
 };
 
 // Trigger weekly analyze
-export const triggerWeeklyAnalyze = async (req: Request, res: Response): Promise<any> => {
+export const triggerWeeklyAnalyze = async (req: AuthenticatedRequest, res: Response): Promise<any> => {
   try {
-    await agenda.now("weekly review analyze", {});
-    res.status(200).json({ message: `Triggered weekly review analyze` });
+    const { businessId } = req;
+
+    if (!businessId) {
+      return res.status(400).json({ message: "Missing businessId in request body" });
+    }
+
+    await agenda.now("weekly review analyze", { businessId });
+
+    res.status(200).json({ message: `Triggered weekly review analyze for businessId: ${businessId}` });
   } catch (error) {
-    console.error('Trigger Agenda jobs error:', error);
-    res.status(500).json({ message: 'Error triggering Agenda jobs' });
+    console.error("Trigger Agenda jobs error:", error);
+    res.status(500).json({ message: "Error triggering Agenda jobs" });
   }
 };
 

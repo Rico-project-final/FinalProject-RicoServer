@@ -10,4 +10,5 @@ const agenda = new Agenda({
   defaultConcurrency: 3
 });
 
+
 export default agenda;

@@ -97,7 +97,6 @@ const getDashboard = async (req: Request, res: Response): Promise<any> => {
   try {
     // @ts-ignore - businessId injected by your JWT middleware
     const businessId = req.businessId;
-    console.log('businessId:', businessId);
     if (!businessId) {
       return res.status(400).json({ message: 'Missing businessId from request' });
     }
