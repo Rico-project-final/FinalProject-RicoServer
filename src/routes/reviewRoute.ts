@@ -12,8 +12,10 @@ router.post('/create', optionalAuthenticateJwt,  reviewController.createReview);
 router.use(authenticateJwt);
 // router.use(checkAdmin); 
 router.get('/getAll', reviewController.getAllReviews);
+router.get('/getByUser', reviewController.getReviewsByUser);
 router.get('/:reviewId', reviewController.getReviewById);
 router.delete('/delete/:reviewId', reviewController.deleteReviewById);
 router.post('/triggerAll', reviewController.triggerWeeklyAnalyze);
+
 
 export default router;

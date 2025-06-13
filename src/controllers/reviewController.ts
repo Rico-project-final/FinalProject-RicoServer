@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Review } from '../models/reviewModel';
 import agenda from '../jobs/agendaThread';
 
+
 // Add types for requests with businessId and userId
 interface AuthenticatedRequest extends Request {
   userId?: string;
@@ -107,11 +108,34 @@ export const deleteReviewById = async (req: Request, res: Response): Promise<any
     res.status(500).json({ message: 'Error deleting review' });
   }
 };
+export const getReviewsByUser = async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  try {
+    
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized: No user ID found in token' });
+    }
+
+    const reviews = await Review.find({ userId }).populate('userId', 'name email').populate('businessId', 'BusinessName');;
+
+    if (reviews.length === 0) {
+      return res.status(404).json({ message: 'No reviews found for this user' });
+    }
+
+    res.status(200).json(reviews);
+  } catch (error) {
+    console.error('Get reviews by user error:', error);
+    res.status(500).json({ message: 'Error fetching reviews by user' });
+  }
+};
+
 
 export default {
   createReview,
   getAllReviews,
   getReviewById,
   deleteReviewById,
+  getReviewsByUser,
   triggerWeeklyAnalyze
 };
