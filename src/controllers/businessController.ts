@@ -2,6 +2,9 @@ import { Request, Response } from 'express';
 import { Business } from '../models/BusinessModel';
 import {User} from '../models/userModel';
 import { generateBusinessQR } from '../utils/QRGenerator';
+import { sendEmail } from '../utils/emailAPI';
+import { getEmailTemplate } from '../utils/emailTemplates';
+
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -144,10 +147,47 @@ export const getQRCodeForBusiness = async (req: Request & { businessId?: string 
     res.status(500).json({ error: 'Failed to generate QR code' });
   }
 };
+export const sendResponseToCustomer = async (req: Request & { businessId?: string }, res: Response): Promise<any> => {
+  try {
+    const { businessId } = req;
+    const { customerName, customerEmail, responseText } = req.body;
 
+    if (!businessId || !customerEmail || !customerName || !responseText) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
 
+    // ✅ Fetch the business and its owner
+    const business = await Business.findById(businessId).populate('ownerId');
+    if (!business || !business.ownerId) {
+      return res.status(404).json({ message: 'Business not found or has no owner' });
+    }
+
+    
+    const { subject, html } = getEmailTemplate({
+      emailType: 'admin-response-to-customer',
+      data: {
+        customerName,
+        businessName: business.BusinessName,
+        responseText,
+      },
+    });
+
+    // ✅ Send email to customer
+    const result = await sendEmail({
+      to: customerEmail,
+      subject,
+      html,
+    });
+
+    res.status(200).json({ message: 'Response email sent to customer', result });
+  } catch (error) {
+    console.error('Error sending response email:', error);
+    res.status(500).json({ message: 'Error sending email', error });
+  }
+};
 
 export default {
+  sendResponseToCustomer,
   getAllbusinesses,
   getbusinessById,
   createBusiness,

@@ -42,3 +42,8 @@ export const optionalAuthenticateJwt = (req: Request & { userId?: string }, res:
 
  return next();
 };
+export const generateEmailVerificationToken = (userId: string) => {
+  return jwt.sign({ userId }, process.env.EMAIL_VERIFICATION_SECRET!, {
+    expiresIn: '15m',
+  });
+};

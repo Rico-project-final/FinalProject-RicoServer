@@ -13,6 +13,7 @@ router.get('/' , businessController.getAllbusinesses);
 router.put('/update/:businessId', businessController.updateBusiness);
 router.delete('/delete/:businessId', businessController.deleteBusiness);
 router.post('/generateQR', businessController.getQRCodeForBusiness);
+router.post('/sendEmailResponse' , businessController.sendResponseToCustomer);
 
 
 

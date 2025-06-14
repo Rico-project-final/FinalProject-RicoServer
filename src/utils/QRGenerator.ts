@@ -1,4 +1,3 @@
-//TODO :: implement code to generate QR codes for using RICO
 import QRCode from 'qrcode';
 
 export const generateBusinessQR = async (businessId: string, domainUrl: string): Promise<Buffer> => {

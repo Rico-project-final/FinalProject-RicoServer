@@ -4,6 +4,9 @@ import { User } from '../models/userModel';
 import { OAuth2Client } from 'google-auth-library';
 import env from 'dotenv';
 import { Business } from '../models/BusinessModel';
+import { getEmailTemplate } from '../utils/emailTemplates';
+import { sendEmail } from '../utils/emailAPI';
+import { generateEmailVerificationToken } from '../middleware/auth';
 
 env.config();
 
@@ -38,6 +41,10 @@ interface LoginRequest extends Request {
         password: string;
     };
 }
+//TODO :: add customer verification email and also update the flow of front! -GENERAL TODO
+//TODO :: User creation only after verification -GENERAL TODO
+
+
 
 // Google Sign-In for customers
 export const customerGoogleSignIn = async (req: Request, res: Response): Promise<any> => {
@@ -94,7 +101,6 @@ export const customerGoogleSignIn = async (req: Request, res: Response): Promise
     }
 };
 // Google Sign-In for businesses
-//TODO:: change bussiness to be created before user
 export const businessGoogleSignIn = async (req: Request, res: Response): Promise<any> => {
   try {
     const { credential, businessName, phone, password } = req.body;
@@ -169,146 +175,219 @@ export const businessGoogleSignIn = async (req: Request, res: Response): Promise
 
 // User Registration
 export const registerUser = async (req: RegisterUserRequest, res: Response): Promise<any> => {
-    try {
-        const { name, email, password, phone = '' } = req.body;
+  try {
+    const { name, email, password, phone = '' } = req.body;
 
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ message: 'Email already exists' });
-        }
-
-        const user = new User({
-            name,
-            email,
-            password,
-            phone,
-            profileImage: '', // can be updated later
-            role: 'customer'
-        });
-        await user.save();
-
-        const accessToken = generateAccessToken(user._id.toString(), user.role);
-
-        res.status(201).json({
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                phone: user.phone,
-                profileImage: user.profileImage,
-                role: user.role
-            },
-            accessToken
-        });
-    } catch (error) {
-        console.error('Register error:', error);
-        res.status(500).json({ message: 'Error creating user', error });
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email already exists' });
     }
+
+    const user = new User({
+      name,
+      email,
+      password,
+      phone,
+      profileImage: '', // can be updated later
+      role: 'customer'
+    });
+
+    await user.save();
+
+    // ✅ Send welcome email
+    try {
+      const { subject, html } = getEmailTemplate({
+        emailType: 'customer-welcome',
+        data: { name },
+      });
+
+      await sendEmail({
+        to: email,
+        subject,
+        html,
+      });
+    } catch (emailErr) {
+      console.error('Failed to send welcome email:', emailErr);
+      // You might log this but avoid blocking registration due to email issues
+    }
+
+    const accessToken = generateAccessToken(user._id.toString(), user.role);
+
+    res.status(201).json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        profileImage: user.profileImage,
+        role: user.role
+      },
+      accessToken
+    });
+  } catch (error) {
+    console.error('Register error:', error);
+    res.status(500).json({ message: 'Error creating user', error });
+  }
 };
 
 // Business Registration
 export const registerBusiness = async (req: RegisterBusinessRequest, res: Response): Promise<any> => {
+  try {
+    const { name, email, password, companyName, phone = '' } = req.body;
 
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email already exists' });
+    }
+
+    // Create new business
+    const newBusiness = new Business({
+      BusinessName: companyName,
+      phone,
+      reviews: [],
+    });
+
+    const savedBusiness = await newBusiness.save();
+
+    // Create new user
+    const user = new User({
+      name,
+      email,
+      password,
+      phone,
+      companyName,
+      profileImage: '',
+      role: 'admin',
+      businessId: savedBusiness._id,
+      emailVerified: false, // Ensure this field exists in the User schema
+    });
+
+    await user.save();
+
+    await User.findByIdAndUpdate(user._id, { businessId: savedBusiness._id });
+
+    // 🔐 Generate email verification token and link
+    const token = generateEmailVerificationToken(user._id.toString());
+    const verificationLink = `${process.env.DOMAIN_URL}/verifyEmail?token=${token}`;
+
+
+    // 📧 Send email verification
     try {
-        const { name, email, password, companyName, phone = ''} = req.body;
+      const { subject, html } = getEmailTemplate({
+        emailType: 'admin-verification',
+        data: { name, verificationLink },
+      });
 
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ message: 'Email already exists' });
-        }
-
-        const newBusiness = new Business({
-            BusinessName: companyName,
-            phone,
-            reviews: []
-            });
-
-      const savedBusiness = await newBusiness.save();
-
-        let user = new User({
-            name,
-            email,
-            password,
-            phone,
-            companyName,
-            profileImage: '', // can be updated later
-            role: 'admin',
-            businessId: savedBusiness.id 
-        });
-
-        await user.save();
-
-        if (!user) {
-            const randomPassword = Math.random().toString(36).slice(-8);
-            user = new User({
-                email,
-                name,
-                profileImage: '',
-                password: randomPassword,
-                role: companyName ? 'admin' : 'customer',
-                businessId: savedBusiness.id 
-        });
-
+      await sendEmail({
+        to: email,
+        subject,
+        html,
+      });
+    } catch (emailErr) {
+      console.error('Failed to send verification email:', emailErr);
+      return res.status(500).json({ message: 'Failed to send verification email' });
     }
 
-      await User.findByIdAndUpdate(user._id, { businessId: savedBusiness._id });
-
-        const accessToken = generateAccessToken(user._id.toString(), user.businessId.toString());
-        console.log('bussinesId Token:', user.businessId.toString());
-
-        res.status(201).json({
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                phone: user.phone,
-                profileImage: user.profileImage,
-                role: user.role
-            },
-            accessToken
-        });
-    } catch (error) {
-        console.error('Register business error:', error);
-        res.status(500).json({ message: 'Error creating business', error });
-    }
-
-}
+    // ✅ Return response: user created, now must verify
+    res.status(201).json({
+      message: 'User registered. Verification email sent.',
+      userId: user._id,
+    });
+  } catch (error) {
+    console.error('Register business error:', error);
+    res.status(500).json({ message: 'Error creating business', error });
+  }
+};
 
 // User Login
 export const login = async (req: LoginRequest, res: Response): Promise<any> => {
-    try {
-        const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(401).json({ message: 'email or password incorrect' });
-        }
-
-        const isMatch = await user.comparePassword(password);
-        if (!isMatch) {
-            return res.status(401).json({ message: 'email or password incorrect' });
-        }
-
-        const accessToken = generateAccessToken(user._id.toString(), user.businessId? user.businessId.toString() : user.role);
-
-
-        res.status(200).json({
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                phone: user.phone,
-                profileImage: user.profileImage,
-                role: user.role
-            },
-            accessToken
-        });
-    } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ message: 'Error logging in', error });
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: 'email or password incorrect' });
     }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'email or password incorrect' });
+    }
+    //TODO :: MAYBE NEEDED MAYBE NOT
+    // 🚫 Block unverified admins
+    // if (user.role === 'admin' && !user.emailVerified) {
+    //   return res.status(403).json({ message: 'Please verify your email before logging in.' });
+    // }
+
+    const accessToken = generateAccessToken(
+      user._id.toString(),
+      user.businessId ? user.businessId.toString() : user.role
+    );
+
+    res.status(200).json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        profileImage: user.profileImage,
+        role: user.role,
+      },
+      accessToken,
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Error logging in', error });
+  }
 };
 
+export const verifyEmail = async (req: Request, res: Response): Promise<any> => {
+  const { token } = req.query;
+
+  if (!token || typeof token !== 'string') {
+    return res.status(400).json({ message: 'Missing or invalid token' });
+  }
+
+  try {
+    // 🔐 Verify token
+    const payload = jwt.verify(token, process.env.EMAIL_VERIFICATION_SECRET!) as { userId: string };
+
+    const user = await User.findById(payload.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (user.emailVerified) {
+      return res.status(400).json({ message: 'Email is already verified' });
+    }
+
+    // ✅ Mark as verified
+    user.emailVerified = true;
+    await user.save();
+
+    // 🎉 Send welcome email now that they're verified
+    try {
+      //TODO :: Change to welcome email for customers and also for admins.
+      const { subject, html } = getEmailTemplate({
+        emailType: 'admin-welcome',
+        data: { name: user.name },
+      });
+
+      await sendEmail({
+        to: user.email,
+        subject,
+        html,
+      });
+    } catch (emailErr) {
+      console.error('Failed to send admin welcome email after verification:', emailErr);
+      // Don't block success response
+    }
+
+    res.status(200).json({ message: 'Email verified successfully. You can now log in.' });
+  } catch (error) {
+    console.error('Email verification failed:', error);
+    res.status(400).json({ message: 'Invalid or expired token' });
+  }
+};
 // JWT Generator
 export const generateAccessToken = (userId: string, role: string, businessId?: string): string => {
   return jwt.sign(
@@ -319,4 +398,4 @@ export const generateAccessToken = (userId: string, role: string, businessId?: s
 };
 
 
-export default { registerUser, registerBusiness, login, customerGoogleSignIn , businessGoogleSignIn };
+export default {verifyEmail, registerUser, registerBusiness, login, customerGoogleSignIn , businessGoogleSignIn };

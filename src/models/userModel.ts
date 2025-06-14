@@ -10,6 +10,7 @@
       profileImage: string;
       role: 'admin' | 'customer';
       businessId: mongoose.Types.ObjectId;
+      emailVerified : boolean;
       comparePassword(candidatePassword: string): Promise<boolean>;
     }
     
@@ -60,7 +61,8 @@
       required: function (this: IUser) {
         return this.role === 'admin';
       }
-      } 
+      },
+      emailVerified: { type: Boolean, default: false } 
     }, {
       timestamps: true
     });

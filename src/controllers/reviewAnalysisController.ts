@@ -16,7 +16,7 @@ export const getAllReviewsAnalasis = async (req: AuthenticatedRequest, res: Resp
       return res.status(400).json({ message: 'Missing businessId from request' });
     }
     
-    const reviews = await ReviewAnalysis.find({ businessId });
+    const reviews = await ReviewAnalysis.find({ businessId }).populate('userId', 'name email');
 
     res.status(200).json(reviews);
   } catch (error) {
