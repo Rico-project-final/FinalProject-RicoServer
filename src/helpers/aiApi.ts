@@ -116,7 +116,7 @@ class AIAnalysisAPI {
         suggestions: analysis.suggestions,
         adminResponse: analysis.adminResponse,
         isResolved: false,
-        businessId: review.businessId 
+        businessId: review.businessId || new mongoose.Types.ObjectId()
       });
 
       // Save the document

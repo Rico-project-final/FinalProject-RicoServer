@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { ReviewAnalysis } from '../models/reviewAnalysisModel';
+import dayjs from "dayjs";
 
 
 interface AuthenticatedRequest extends Request {
@@ -15,15 +16,32 @@ export const getAllReviewsAnalasis = async (req: AuthenticatedRequest, res: Resp
     if (!businessId) {
       return res.status(400).json({ message: 'Missing businessId from request' });
     }
-    
-    const reviews = await ReviewAnalysis.find({ businessId });
 
-    res.status(200).json(reviews);
+    const reviews = await ReviewAnalysis.find({ businessId })
+      .populate("userId", "_id name email")
+      .lean();
+
+    const formattedReviews = reviews.map((r) => ({
+      reviewId: r._id.toString(),
+      userId: r.userId,
+      text: r.text,
+      category: r.category,
+      sentiment: r.sentiment,
+      analysisSummary: r.analysisSummary,
+      suggestions: r.suggestions ?? undefined,
+      adminResponse: r.adminResponse ?? undefined,
+      isResolved: r.isResolved,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    }));
+
+    return res.status(200).json(formattedReviews);
   } catch (error) {
     console.error('Get all reviews analysis error:', error);
-    res.status(500).json({ message: 'Error fetching reviews analysis' });
+    return res.status(500).json({ message: 'Error fetching reviews analysis' });
   }
 };
+
 
 // Get a review by ID 
 export const getAnalasisById = async (req: Request, res: Response):Promise<any> => {
@@ -55,6 +73,7 @@ export const updateReviewAnalysis = async (req: Request, res: Response):Promise<
         res.status(500).json({ message: 'Error fetching review' });
     }
 }
+    
 export default {
     getAllReviewsAnalasis,
     getAnalasisById,

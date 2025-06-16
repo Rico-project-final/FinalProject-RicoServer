@@ -4,7 +4,7 @@ export interface IReviewAnalysis extends Document {
   reviewId: string; // reference to the original review
   userId: mongoose.Types.ObjectId; // who wrote the review
   text: string; // copy of the review text
-  category: 'food' | 'service' | 'overall experience';
+  category: 'food' | 'service' | 'experience';
   sentiment: 'positive' | 'neutral' | 'negative'; // result from AI
   analysisSummary: string; // optional explanation by OpenAI
   suggestions?: string; // generated suggestion for admin, if it is repetitive problem
@@ -33,7 +33,7 @@ const reviewAnalysisSchema = new Schema<IReviewAnalysis>({
   },
   category: {
     type: String,
-    enum: ['food', 'service', 'overall experience'],
+    enum: ['food', 'service', 'experience'],
     required: true,
   },
   sentiment: {
