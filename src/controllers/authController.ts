@@ -7,6 +7,7 @@ import { Business } from '../models/BusinessModel';
 import { getEmailTemplate } from '../utils/emailTemplates';
 import { sendEmail } from '../utils/emailAPI';
 import { generateEmailVerificationToken } from '../middleware/auth';
+import {  EmailType } from '../utils/emailTemplates';
 
 env.config();
 
@@ -41,11 +42,6 @@ interface LoginRequest extends Request {
         password: string;
     };
 }
-//TODO :: add customer verification email and also update the flow of front! -GENERAL TODO
-//TODO :: User creation only after verification -GENERAL TODO
-
-
-
 // Google Sign-In for customers
 export const customerGoogleSignIn = async (req: Request, res: Response): Promise<any> => {
     try {
@@ -178,27 +174,34 @@ export const registerUser = async (req: RegisterUserRequest, res: Response): Pro
   try {
     const { name, email, password, phone = '' } = req.body;
 
+    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'Email already exists' });
     }
 
+    // Create new user (customer)
     const user = new User({
       name,
       email,
       password,
       phone,
-      profileImage: '', // can be updated later
-      role: 'customer'
+      profileImage: '', 
+      role: 'customer',
+      emailVerified: false, 
     });
 
     await user.save();
 
-    // ✅ Send welcome email
+    // 🔐 Generate email verification token and link
+    const token = generateEmailVerificationToken(user._id.toString());
+    const verificationLink = `${process.env.DOMAIN_URL}/verifyEmail?token=${token}`;
+
+    // 📧 Send customer email verification
     try {
       const { subject, html } = getEmailTemplate({
-        emailType: 'customer-welcome',
-        data: { name },
+        emailType: 'customer-verification',
+        data: { name, verificationLink },
       });
 
       await sendEmail({
@@ -207,22 +210,14 @@ export const registerUser = async (req: RegisterUserRequest, res: Response): Pro
         html,
       });
     } catch (emailErr) {
-      console.error('Failed to send welcome email:', emailErr);
-      // You might log this but avoid blocking registration due to email issues
+      console.error('Failed to send verification email:', emailErr);
+      return res.status(500).json({ message: 'Failed to send verification email' });
     }
 
-    const accessToken = generateAccessToken(user._id.toString(), user.role);
-
+    // ✅ Return response
     res.status(201).json({
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        profileImage: user.profileImage,
-        role: user.role
-      },
-      accessToken
+      message: 'User registered. Verification email sent.',
+      userId: user._id,
     });
   } catch (error) {
     console.error('Register error:', error);
@@ -314,11 +309,11 @@ export const login = async (req: LoginRequest, res: Response): Promise<any> => {
     if (!isMatch) {
       return res.status(401).json({ message: 'email or password incorrect' });
     }
-    //TODO :: MAYBE NEEDED MAYBE NOT
+    //TODO :: Front handle this case
     // 🚫 Block unverified admins
-    // if (user.role === 'admin' && !user.emailVerified) {
-    //   return res.status(403).json({ message: 'Please verify your email before logging in.' });
-    // }
+    if (!user.emailVerified) {
+      return res.status(403).json({ message: 'Please verify your email before logging in.' });
+    }
 
     const accessToken = generateAccessToken(
       user._id.toString(),
@@ -360,34 +355,83 @@ export const verifyEmail = async (req: Request, res: Response): Promise<any> => 
       return res.status(400).json({ message: 'Email is already verified' });
     }
 
-    // ✅ Mark as verified
+    // ✅ Mark email as verified
     user.emailVerified = true;
     await user.save();
 
-    // 🎉 Send welcome email now that they're verified
-    try {
-      //TODO :: Change to welcome email for customers and also for admins.
-      const { subject, html } = getEmailTemplate({
-        emailType: 'admin-welcome',
-        data: { name: user.name },
-      });
+    // 🎉 Send welcome email based on role
+    let emailType: EmailType | null = null;
+    if (user.role === 'admin') {
+      emailType = 'admin-welcome';
+    } else if (user.role === 'customer') {
+      emailType = 'customer-welcome';
+    }
 
-      await sendEmail({
-        to: user.email,
-        subject,
-        html,
-      });
-    } catch (emailErr) {
-      console.error('Failed to send admin welcome email after verification:', emailErr);
-      // Don't block success response
+    if (emailType) {
+      try {
+        const { subject, html } = getEmailTemplate({
+          emailType,
+          data: { name: user.name },
+        });
+
+        await sendEmail({
+          to: user.email,
+          subject,
+          html,
+        });
+      } catch (emailErr) {
+        console.error(`Failed to send ${emailType} email after verification:`, emailErr);
+      }
     }
 
     res.status(200).json({ message: 'Email verified successfully. You can now log in.' });
-  } catch (error) {
+
+  } catch (error: any) {
     console.error('Email verification failed:', error);
-    res.status(400).json({ message: 'Invalid or expired token' });
+
+    // ⏰ If token expired, send new verification email
+    if (error.name === 'TokenExpiredError') {
+      try {
+        const expiredPayload = jwt.decode(token) as { userId: string } | null;
+        if (!expiredPayload || !expiredPayload.userId) {
+          return res.status(400).json({ message: 'Token expired and user could not be identified.' });
+        }
+
+        const user = await User.findById(expiredPayload.userId);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        if (user.emailVerified) return res.status(400).json({ message: 'Email is already verified' });
+
+        const newToken = generateEmailVerificationToken(user._id.toString());
+        const newLink = `${process.env.DOMAIN_URL}/verifyEmail?token=${newToken}`;
+
+        const emailType = user.role === 'admin' ? 'admin-verification' : 'customer-verification';
+
+        const { subject, html } = getEmailTemplate({
+          emailType,
+          data: { name: user.name, verificationLink: newLink },
+        });
+
+        await sendEmail({
+          to: user.email,
+          subject,
+          html,
+        });
+
+        return res.status(400).json({
+          message: 'Verification link expired. A new verification email has been sent.',
+        });
+
+      } catch (reissueError) {
+        console.error('Failed to re-send verification email:', reissueError);
+        return res.status(500).json({ message: 'Token expired and re-verification failed' });
+      }
+    }
+
+    return res.status(400).json({ message: 'Invalid or expired token' });
   }
 };
+
+
 // JWT Generator
 export const generateAccessToken = (userId: string, role: string, businessId?: string): string => {
   return jwt.sign(
