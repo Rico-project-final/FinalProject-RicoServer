@@ -180,15 +180,15 @@ export const registerUser = async (req: RegisterUserRequest, res: Response): Pro
       return res.status(400).json({ message: 'Email already exists' });
     }
 
-    // Create new user (customer)
+    // Create new user
     const user = new User({
       name,
       email,
       password,
       phone,
-      profileImage: '', 
+      profileImage: '',
       role: 'customer',
-      emailVerified: false, 
+      emailVerified: false,
     });
 
     await user.save();
@@ -197,33 +197,32 @@ export const registerUser = async (req: RegisterUserRequest, res: Response): Pro
     const token = generateEmailVerificationToken(user._id.toString());
     const verificationLink = `${process.env.DOMAIN_URL}/verifyEmail?token=${token}`;
 
-    // 📧 Send customer email verification
     try {
       const { subject, html } = getEmailTemplate({
         emailType: 'customer-verification',
         data: { name, verificationLink },
       });
 
-      await sendEmail({
-        to: email,
-        subject,
-        html,
-      });
+      await sendEmail({ to: email, subject, html });
+
     } catch (emailErr) {
       console.error('Failed to send verification email:', emailErr);
+
+      // ❌ Delete user if email fails
+      await user.deleteOne();
+
       return res.status(500).json({ message: 'Failed to send verification email' });
     }
 
-    // ✅ Return response
     res.status(201).json({
-      message: 'User registered. Verification email sent.',
-      userId: user._id,
+      message: 'User Verification email sent, please verify your account.',
     });
   } catch (error) {
     console.error('Register error:', error);
     res.status(500).json({ message: 'Error creating user', error });
   }
 };
+
 
 // Business Registration
 export const registerBusiness = async (req: RegisterBusinessRequest, res: Response): Promise<any> => {
@@ -310,7 +309,7 @@ export const login = async (req: LoginRequest, res: Response): Promise<any> => {
       return res.status(401).json({ message: 'email or password incorrect' });
     }
     //TODO :: Front handle this case
-    // 🚫 Block unverified admins
+    // 🚫 Block unverified
     if (!user.emailVerified) {
       return res.status(403).json({ message: 'Please verify your email before logging in.' });
     }
@@ -345,7 +344,7 @@ export const verifyEmail = async (req: Request, res: Response): Promise<any> => 
   }
 
   try {
-    // 🔐 Verify token
+    // 🔐 Verify the token
     const payload = jwt.verify(token, process.env.EMAIL_VERIFICATION_SECRET!) as { userId: string };
 
     const user = await User.findById(payload.userId);
@@ -355,45 +354,35 @@ export const verifyEmail = async (req: Request, res: Response): Promise<any> => 
       return res.status(400).json({ message: 'Email is already verified' });
     }
 
-    // ✅ Mark email as verified
+    // ✅ Mark as verified
     user.emailVerified = true;
     await user.save();
 
-    // 🎉 Send welcome email based on role
-    let emailType: EmailType | null = null;
-    if (user.role === 'admin') {
-      emailType = 'admin-welcome';
-    } else if (user.role === 'customer') {
-      emailType = 'customer-welcome';
+    // 🎉 Send welcome email
+    try {
+      await sendVerificationOrWelcomeEmail({ user, type: 'welcome' });
+    } catch (err) {
+      console.error('Failed to send welcome email:', err);
     }
 
-    if (emailType) {
-      try {
-        const { subject, html } = getEmailTemplate({
-          emailType,
-          data: { name: user.name },
-        });
+    // 🔑 Generate access token
+    const accessToken = generateAccessToken(
+      user._id.toString(),
+      user.businessId ? user.businessId.toString() : user.role
+    );
 
-        await sendEmail({
-          to: user.email,
-          subject,
-          html,
-        });
-      } catch (emailErr) {
-        console.error(`Failed to send ${emailType} email after verification:`, emailErr);
-      }
-    }
-
-    res.status(200).json({ message: 'Email verified successfully. You can now log in.' });
-
+    return res.status(200).json({
+      message: 'Email verified successfully. You are now logged in.',
+      user,
+      accessToken,
+    });
   } catch (error: any) {
     console.error('Email verification failed:', error);
 
-    // ⏰ If token expired, send new verification email
     if (error.name === 'TokenExpiredError') {
       try {
         const expiredPayload = jwt.decode(token) as { userId: string } | null;
-        if (!expiredPayload || !expiredPayload.userId) {
+        if (!expiredPayload?.userId) {
           return res.status(400).json({ message: 'Token expired and user could not be identified.' });
         }
 
@@ -404,23 +393,15 @@ export const verifyEmail = async (req: Request, res: Response): Promise<any> => 
         const newToken = generateEmailVerificationToken(user._id.toString());
         const newLink = `${process.env.DOMAIN_URL}/verifyEmail?token=${newToken}`;
 
-        const emailType = user.role === 'admin' ? 'admin-verification' : 'customer-verification';
-
-        const { subject, html } = getEmailTemplate({
-          emailType,
-          data: { name: user.name, verificationLink: newLink },
-        });
-
-        await sendEmail({
-          to: user.email,
-          subject,
-          html,
+        await sendVerificationOrWelcomeEmail({
+          user,
+          type: 'verification',
+          verificationLink: newLink,
         });
 
         return res.status(400).json({
           message: 'Verification link expired. A new verification email has been sent.',
         });
-
       } catch (reissueError) {
         console.error('Failed to re-send verification email:', reissueError);
         return res.status(500).json({ message: 'Token expired and re-verification failed' });
@@ -431,6 +412,37 @@ export const verifyEmail = async (req: Request, res: Response): Promise<any> => 
   }
 };
 
+const sendVerificationOrWelcomeEmail = async ({
+  user,
+  type,
+  verificationLink,
+}: {
+  user: any;
+  type: 'welcome' | 'verification';
+  verificationLink?: string;
+}) => {
+  let emailType: EmailType;
+
+  if (type === 'welcome') {
+    emailType = user.role === 'admin' ? 'admin-welcome' : 'customer-welcome';
+  } else {
+    emailType = user.role === 'admin' ? 'admin-verification' : 'customer-verification';
+  }
+
+  const { subject, html } = getEmailTemplate({
+    emailType,
+    data:
+      type === 'welcome'
+        ? { name: user.name }
+        : { name: user.name, verificationLink },
+  });
+
+  await sendEmail({
+    to: user.email,
+    subject,
+    html,
+  });
+};
 
 // JWT Generator
 export const generateAccessToken = (userId: string, role: string, businessId?: string): string => {
