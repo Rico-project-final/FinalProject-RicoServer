@@ -150,9 +150,8 @@ export const getQRCodeForBusiness = async (req: Request & { businessId?: string 
 export const sendResponseToCustomer = async (req: Request & { businessId?: string }, res: Response): Promise<any> => {
   try {
     const { businessId } = req;
-    const { customerName, customerEmail, responseText } = req.body;
-
-    if (!businessId || !customerEmail || !customerName || !responseText) {
+    const { email, text } = req.body;
+    if (!email || !text) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
@@ -161,20 +160,24 @@ export const sendResponseToCustomer = async (req: Request & { businessId?: strin
     if (!business || !business.ownerId) {
       return res.status(404).json({ message: 'Business not found or has no owner' });
     }
+    const user = await User.findOne({ email });
+    if( !user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
     
     const { subject, html } = getEmailTemplate({
       emailType: 'admin-response-to-customer',
       data: {
-        customerName,
+        name : user.name,
         businessName: business.BusinessName,
-        responseText,
+        text,
       },
     });
 
     // ✅ Send email to customer
     const result = await sendEmail({
-      to: customerEmail,
+      to: email,
       subject,
       html,
     });

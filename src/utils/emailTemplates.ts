@@ -70,10 +70,10 @@ export const getEmailTemplate = ({
         subject: `A response from ${data.businessName}`,
         html: `
           <div style="font-family: sans-serif; padding: 20px;">
-            <h2 style="color:#006bb3">Hi ${data.customerName},</h2>
+            <h2 style="color:#006bb3">Hi ${data.name},</h2>
             <p>${data.businessName} has responded to your recent review:</p>
             <blockquote style="margin:20px 0; padding:15px; background:#f4f4f4; border-left:5px solid #006bb3;">
-              ${data.responseText}
+              ${data.text}
             </blockquote>
             <p>Thanks for being part of RICO!<br>– RICO Team</p>
           </div>
