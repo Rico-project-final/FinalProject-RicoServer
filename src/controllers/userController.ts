@@ -3,6 +3,7 @@ import { User } from '../models/userModel';
 import { Review } from '../models/reviewModel';
 import { Task } from '../models/taskModel';
 import mongoose from 'mongoose';
+import { Business } from '../models/BusinessModel';
 
 // Get all customers
 export const getAllUsersNoPage = async (req: Request&{businessId : string}, res: Response): Promise<any> => {
@@ -182,7 +183,7 @@ const getDashboard = async (req: Request & { businessId?: string }, res: Respons
         name: months[i],
         food: 0,
         service: 0,
-        overall: 0,  // fixed category name here
+        overall: 0,  
       });
     }
 
