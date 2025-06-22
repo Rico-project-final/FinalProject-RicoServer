@@ -1,6 +1,15 @@
 import { Request, Response } from 'express';
 import { Business } from '../models/BusinessModel';
 import {User} from '../models/userModel';
+import { generateBusinessQR } from '../utils/QRGenerator';
+import { sendEmail } from '../utils/emailAPI';
+import { getEmailTemplate } from '../utils/emailTemplates';
+
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const DOMAIN_URL = process.env.DOMAIN_URL ?? 'http://localhost:5173';
 
 // GET all 
 export const getAllbusinesses = async (req: Request& { userId?: string }, res: Response):Promise<any> => {
@@ -118,11 +127,74 @@ export const deleteBusiness = async (req: Request& { userId?: string }, res: Res
     res.status(500).json({ message: 'Error deleting task', error });
   }
 };
+export const getQRCodeForBusiness = async (req: Request & { businessId?: string }, res: Response): Promise<any> => {
+  try {
+    const businessId = req.businessId;
+
+    if (!businessId) {
+      return res.status(400).json({ error: 'Missing businessId from token' });
+    }
+
+    const qrBuffer = await generateBusinessQR(businessId, DOMAIN_URL);
+    const base64Image = qrBuffer.toString('base64');
+
+    res.status(200).json({
+      message: 'QR code generated successfully',
+      image: `data:image/png;base64,${base64Image}`
+    });
+  } catch (error) {
+    console.error('QR generation failed:', error);
+    res.status(500).json({ error: 'Failed to generate QR code' });
+  }
+};
+export const sendResponseToCustomer = async (req: Request & { businessId?: string }, res: Response): Promise<any> => {
+  try {
+    const { businessId } = req;
+    const { email, text } = req.body;
+    if (!email || !text) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // ✅ Fetch the business and its owner
+    const business = await Business.findById(businessId).populate('ownerId');
+    if (!business || !business.ownerId) {
+      return res.status(404).json({ message: 'Business not found or has no owner' });
+    }
+    const user = await User.findOne({ email });
+    if( !user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    
+    const { subject, html } = getEmailTemplate({
+      emailType: 'admin-response-to-customer',
+      data: {
+        name : user.name,
+        businessName: business.BusinessName,
+        text,
+      },
+    });
+
+    // ✅ Send email to customer
+    const result = await sendEmail({
+      to: email,
+      subject,
+      html,
+    });
+
+    res.status(200).json({ message: 'Response email sent to customer', result });
+  } catch (error) {
+    console.error('Error sending response email:', error);
+    res.status(500).json({ message: 'Error sending email', error });
+  }
+};
 
 export default {
+  sendResponseToCustomer,
   getAllbusinesses,
   getbusinessById,
   createBusiness,
   updateBusiness,
   deleteBusiness,
+  getQRCodeForBusiness
 };

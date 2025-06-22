@@ -18,7 +18,6 @@ export const authenticateJwt = (req: AuthRequest, res: Response, next: NextFunct
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as { userId: string , role?:string, businessId?: string };
     req.userId = decoded.userId;
-    console.log('decoded', decoded);
     if(decoded.businessId) {
       req.businessId = decoded.businessId;
 
@@ -42,4 +41,9 @@ export const optionalAuthenticateJwt = (req: Request & { userId?: string }, res:
   }
 
  return next();
+};
+export const generateEmailVerificationToken = (userId: string) => {
+  return jwt.sign({ userId }, process.env.EMAIL_VERIFICATION_SECRET!, {
+    expiresIn: '15m',
+  });
 };

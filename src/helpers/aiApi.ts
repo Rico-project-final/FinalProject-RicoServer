@@ -124,13 +124,13 @@ class AIAnalysisAPI {
       await Review.findByIdAndUpdate(review.id, { isAnalyzed: true });
       
       // If we have a task recommendation, create a task
-      // if (analysis.taskRecommendation) {
-      //   await this.createTaskFromRecommendation(
-      //     analysis.taskRecommendation,
-      //     reviewAnalysis._id as unknown as mongoose.Types.ObjectId,
-      //     (review.userId || new mongoose.Types.ObjectId()) as mongoose.Types.ObjectId
-      //   );
-      // }
+      if (analysis.taskRecommendation) {
+        await this.createTaskFromRecommendation(
+          analysis.taskRecommendation,
+          reviewAnalysis._id as unknown as mongoose.Types.ObjectId,
+          (review.userId || new mongoose.Types.ObjectId()) as mongoose.Types.ObjectId
+        );
+      }
       
       return reviewAnalysis;
     } catch (error) {
@@ -146,6 +146,7 @@ class AIAnalysisAPI {
    */
   async batchAnalyzeReviews(reviews: IReview[]): Promise<IReviewAnalysis[]> {
     try {
+      console.log(reviews.length, 'reviews to analyze');
       const analysisPromises = reviews.map(review => this.createReviewAnalysis(review));
       return await Promise.all(analysisPromises);
     } catch (error) {
