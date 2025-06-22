@@ -4,12 +4,13 @@ import {User} from '../models/userModel';
 import { generateBusinessQR } from '../utils/QRGenerator';
 import { sendEmail } from '../utils/emailAPI';
 import { getEmailTemplate } from '../utils/emailTemplates';
-
+import axios from 'axios';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const DOMAIN_URL = process.env.DOMAIN_URL ?? 'http://localhost:5173';
+
 
 // GET all 
 export const getAllbusinesses = async (req: Request& { userId?: string }, res: Response):Promise<any> => {
@@ -185,6 +186,8 @@ export const sendResponseToCustomer = async (req: Request & { businessId?: strin
     res.status(500).json({ message: 'Error sending email', error });
   }
 };
+
+
 
 export default {
   sendResponseToCustomer,

@@ -12,6 +12,7 @@ import http from 'http';
 import cors from 'cors'
 import reviewAnalysisRoute from "./routes/reviewAnalysisRoute";
 import businessRoute from "./routes/businessRoute";
+import googleBusinessRoute from "./routes/googleBusinessRoute";
 
 dotenv.config();
 
@@ -42,6 +43,7 @@ app.use('/analysis', reviewAnalysisRoute)
 app.use('/business', businessRoute);
 app.use('/tasks', taskRoutes);
 app.use('/users', userRoutes)
+app.use('/googleBusiness', googleBusinessRoute);
 
 const options = {
   definition: {
