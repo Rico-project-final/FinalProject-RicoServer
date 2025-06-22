@@ -38,7 +38,7 @@ export const createReview = async (req: AuthenticatedRequest, res: Response): Pr
 };
 
 // Get all reviews for a specific business
-export const getAllReviews = async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+export const getAllReviewsNoPage = async (req: AuthenticatedRequest, res: Response): Promise<any> => {
   try {
     const { businessId } = req;
  
@@ -50,6 +50,42 @@ export const getAllReviews = async (req: AuthenticatedRequest, res: Response): P
     const reviews = await Review.find({ businessId : businessId }).populate('userId', 'name email');
 
     res.status(200).json(reviews);
+  } catch (error) {
+    console.error('Get all reviews error:', error);
+    res.status(500).json({ message: 'Error fetching reviews' });
+  }
+};
+//Another get all with pagination
+export const getAllReviews = async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  try {
+    const { businessId } = req;
+
+    if (!businessId) {
+      console.error('Missing businessId from request');
+      return res.status(400).json({ message: 'Missing businessId from request' });
+    }
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const [reviews, total] = await Promise.all([
+      Review.find({ businessId })
+        .populate('userId', 'name email')
+        .skip(skip)
+        .limit(limit),
+      Review.countDocuments({ businessId })
+    ]);
+
+    res.status(200).json({
+      reviews,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
     console.error('Get all reviews error:', error);
     res.status(500).json({ message: 'Error fetching reviews' });
@@ -111,6 +147,7 @@ export const deleteReviewById = async (req: Request, res: Response): Promise<any
 export default {
   createReview,
   getAllReviews,
+  getAllReviewsNoPage,
   getReviewById,
   deleteReviewById,
   triggerWeeklyAnalyze

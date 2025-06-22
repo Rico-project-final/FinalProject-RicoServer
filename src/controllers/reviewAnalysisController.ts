@@ -8,7 +8,7 @@ interface AuthenticatedRequest extends Request {
 }
 //TODO ::  add another method using pagination
 // Get all reviews (admin-only)
-export const getAllReviewsAnalasis = async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+export const getAllReviewsAnalasisNoPage = async (req: AuthenticatedRequest, res: Response): Promise<any> => {
   try {
     const { businessId } = req;
 
@@ -24,6 +24,42 @@ export const getAllReviewsAnalasis = async (req: AuthenticatedRequest, res: Resp
     res.status(500).json({ message: 'Error fetching reviews analysis' });
   }
 };
+//Another get all with pagination
+export const getAllReviewsAnalysis = async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  try {
+    const { businessId } = req;
+
+    if (!businessId) {
+      return res.status(400).json({ message: 'Missing businessId from request' });
+    }
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const [reviews, total] = await Promise.all([
+      ReviewAnalysis.find({ businessId })
+        .populate('userId', 'name email')
+        .skip(skip)
+        .limit(limit),
+      ReviewAnalysis.countDocuments({ businessId })
+    ]);
+
+    res.status(200).json({
+      reviews,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error('Get all reviews analysis error:', error);
+    res.status(500).json({ message: 'Error fetching reviews analysis' });
+  }
+};
+
 
 // Get a review by ID 
 export const getAnalasisById = async (req: Request, res: Response):Promise<any> => {
@@ -56,7 +92,8 @@ export const updateReviewAnalysis = async (req: Request, res: Response):Promise<
     }
 }
 export default {
-    getAllReviewsAnalasis,
+    getAllReviewsAnalysis,
+    getAllReviewsAnalasisNoPage,
     getAnalasisById,
     updateReviewAnalysis
 };

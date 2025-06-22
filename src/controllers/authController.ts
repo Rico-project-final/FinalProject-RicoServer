@@ -308,7 +308,7 @@ export const login = async (req: LoginRequest, res: Response): Promise<any> => {
     if (!isMatch) {
       return res.status(401).json({ message: 'email or password incorrect' });
     }
-    //TODO :: Front handle this case
+    
     // 🚫 Block unverified
     if (!user.emailVerified) {
       return res.status(403).json({ message: 'Please verify your email before logging in.' });
