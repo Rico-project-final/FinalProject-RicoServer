@@ -1,130 +1,64 @@
-import { Request, Response } from 'express';
-import { Business } from '../models/BusinessModel';
-import axios from 'axios';
-import dotenv from 'dotenv';
-import { promises } from 'dns';
-import { IReview, Review } from '../models/reviewModel';
+import { Request, Response } from "express";
+import {
+  connectGoogleBusinessService,
+  checkGoogleConnectionService,
+  getAccessToken,
+  fetchGoogleReviewsFromAPI,
+  processAndSaveReviews,
+} from "../utils/googleBusinessUtil";
+import { Business } from "../models/BusinessModel";
+import { GoogleReview } from "../models/googleReviewModel";
+import agenda from '../jobs/agendaThread';
+import axios from "axios";
 
-dotenv.config();
-
-const DOMAIN_URL = process.env.DOMAIN_URL ?? 'http://localhost:5173';
-
-// POST connect Google Business
-export const connectGoogleBusiness = async (req: Request & { businessId?: string }, res: Response): Promise<any> => {
+// POST - Connect a business to Google Business using OAuth
+export const connectGoogleBusiness = async (req: Request & { businessId?: string }, res: Response) : Promise<any> => {
   try {
+    console.log("1 : Connecting business to Google Business...");
     const { code, placeId } = req.body;
-    const { businessId } = req;
+    const businessId = req.businessId;
 
     if (!code || !placeId || !businessId) {
-      return res.status(400).json({ message: 'Missing code, placeId, or businessId' });
+      return res
+        .status(400)
+        .json({ message: "Missing code, placeId, or businessId" });
     }
 
-    const redirectUri = `${DOMAIN_URL}/google-business-callback`;
+    await connectGoogleBusinessService(businessId, code, placeId);
+    console.log("5 : Business connected to Google Business successfully");
 
-    const tokenRes = await axios.post(
-      'https://oauth2.googleapis.com/token',
-      null,
-      {
-        params: {
-          code,
-          client_id: process.env.GOOGLE_OAUTH_CLIENT_ID,
-          client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
-          redirect_uri: redirectUri,
-          grant_type: 'authorization_code',
-        },
-      }
-    );
-
-    const {refresh_token } = tokenRes.data;
-
-    if (!refresh_token) {
-      return res.status(400).json({ message: 'Missing refresh token from Google. User may have already authorized.' });
-    }
-
-    const business = await Business.findById(businessId);
-    if (!business) {
-      return res.status(404).json({ message: 'Business not found' });
-    }
-
-    business.googlePlaceId = placeId;
-    business.googleRefreshToken = refresh_token;
-    business.isGoogleConnected = true;
-
-    await business.save();
-
-    return res.status(200).json({ message: 'Business successfully connected to Google' });
-
+    return res
+      .status(200)
+      .json({ message: "Business successfully connected to Google" });
   } catch (error: any) {
-    console.error('Google OAuth error:', error.response?.data || error.message);
-    return res.status(500).json({ message: 'Failed to connect business to Google' });
+    console.error("Google OAuth error:", error.message || error);
+    return res.status(500).json({ message: "Failed to connect business to Google" });
   }
 };
-// GET check if Google is connected
-export const checkGoogleConnection = async (req: Request & { businessId?: string }, res: Response): Promise<any> => {
+
+// GET - Check if a business is connected to Google Business
+export const checkGoogleConnection = async (req: Request & { businessId?: string }, res: Response) : Promise<any> => {
   try {
-    const { businessId } = req;
+    const businessId = req.businessId;
 
     if (!businessId) {
-      return res.status(400).json({ message: 'Missing businessId' });
+      return res.status(400).json({ message: "Missing businessId" });
     }
 
-    const business = await Business.findById(businessId);
+    const status = await checkGoogleConnectionService(businessId);
 
-    if (!business) {
-      return res.status(404).json({ message: 'Business not found' });
-    }
-    
-    res.status(200).json({
-      isGoogleConnected: business.isGoogleConnected || false,
-      googlePlaceId: business.googlePlaceId || null,
-    });
-
+    return res.status(200).json(status);
   } catch (error: any) {
-    console.error('Error checking Google connection:', error.message);
-    return res.status(500).json({ message: 'Server error' });
+    console.error("Error checking Google connection:", error.message || error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
-const getAccessToken = async (businessId: string): Promise<any> => {
-  if (!businessId) {
-    throw new Error('Missing businessId');
-  }
+//POST - Sync Google reviews for a business and analyze them.
+export const syncGoogleReviews = async (req: Request & { businessId?: string }, res: Response) : Promise<any> => {
+    try {
+    const businessId = req.businessId;
 
-  const business = await Business.findById(businessId);
-  if (!business) {
-    throw new Error('Business not found');
-  }
-
-  if (!business.googleRefreshToken) {
-    throw new Error('Google refresh token not found for business');
-  }
-
-  try {
-    const tokenRes = await axios.post(
-      'https://oauth2.googleapis.com/token',
-      null,
-      {
-        params: {
-          client_id: process.env.GOOGLE_OAUTH_CLIENT_ID,
-          client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
-          refresh_token: business.googleRefreshToken,
-          grant_type: 'refresh_token',
-        },
-      }
-    );
-
-    return tokenRes.data;
-  } catch (err: any) {
-    console.error('Error refreshing token:', err.response?.data || err.message);
-    throw new Error('Failed to refresh access token');
-  }
-};
-
-
-// GET all reviews from Google (first full sync)
-export const getAllGoogleReviews = async (req: Request & { businessId?: string }, res: Response): Promise<any> => {
-  try {
-    const { businessId } = req;
     if (!businessId) return res.status(400).json({ message: "Missing businessId" });
 
     const business = await Business.findById(businessId);
@@ -132,60 +66,61 @@ export const getAllGoogleReviews = async (req: Request & { businessId?: string }
       return res.status(404).json({ message: "Business or placeId not found" });
     }
 
-    const accessToken = await getAccessToken(businessId);
-    if (!accessToken) return res.status(500).json({ message: "Failed to get access token" });
+    // Fetch both newest and most relevant reviews
+    const newestReviews = await fetchGoogleReviewsFromAPI(business.googlePlaceId, "newest");
+    const relevantReviews = await fetchGoogleReviewsFromAPI(business.googlePlaceId, "most_relevant");
 
-    const response = await axios.get(
-      `https://mybusiness.googleapis.com/v4/accounts/${process.env.GOOGLE_ACCOUNT_ID}/locations/${business.googlePlaceId}/reviews`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken.access_token}`,
-        },
-      }
-    );
+    const allReviews = [...newestReviews, ...relevantReviews];
 
-    const googleReviews = response.data.reviews || [];
+    // Get last saved date for optimization
+    const lastSavedReview = await GoogleReview.findOne({ businessId }).sort({ createdAt: -1 }).lean();
+    const lastSavedDate = lastSavedReview?.createdAt;
 
-    let added = 0;
+    // Let processAndSaveReviews handle all filtering and saving
+    const added = await processAndSaveReviews(allReviews, businessId, lastSavedDate);
 
-    for (const gReview of googleReviews) {
-      const googleReviewId = gReview.reviewId;
-
-      // Check if review with this Google ID already exists
-      const exists = await Review.findOne({ googleReviewId });
-      if (exists) continue;
-
-      const newReview = new Review({
-        text: gReview.comment || "",
-        userId: null,
-        category: null,
-        isAnalyzed: false,
-        businessId,
-        googleReviewId, // TODO :: fix schema to include googleReviewId
-      });
-
-      await newReview.save();
-      added++;
+    if (added === 0) {
+      return res.status(200).json({ message: "No new reviews to add" });
     }
 
-    return res.status(200).json({ message: `Fetched ${googleReviews.length} reviews. Added ${added} new reviews.` });
+    await agenda.now("weekly review analyze", { businessId });
+
+    business.lastSyncDate = new Date();
+    await business.save();
+
+    return res.status(200).json({
+      message: `Fetched ${allReviews.length} reviews. Added ${added} new reviews.`,
+    });
   } catch (error: any) {
-    console.error("Failed to fetch new Google reviews:", error.response?.data || error.message);
+    console.error("Failed to fetch new Google reviews:", error.message || error);
     return res.status(500).json({ message: "Failed to fetch new Google reviews" });
   }
 };
 
+export const googleOAuthCallback = async (req: Request, res: Response): Promise<any> => {
+  const code = req.query.code as string;
 
-// GET only new reviews from Google (since last fetch)
-export const getNewGoogleReviews = async (req: Request & { businessId?: string }, res: Response) => {
-  // logic here
+  if (!code) {
+    return res.status(400).send("Missing code");
+  }
+    console.log("Google OAuth callback received code:", code);
+  return res.send(`
+    <html>
+      <body>
+        <script>
+          window.opener.postMessage({ type: 'google-oauth-code', code: '${code}' }, window.location.origin);
+          window.close();
+        </script>
+        <p>ההתחברות הושלמה. ניתן לסגור את החלון.</p>
+      </body>
+    </html>
+  `);
 };
-
 
 export default {
-    checkGoogleConnection,
-    connectGoogleBusiness,
-    getAccessToken,
-    getAllGoogleReviews,
-    getNewGoogleReviews
+  syncGoogleReviews,
+  checkGoogleConnection,
+  connectGoogleBusiness,
+  googleOAuthCallback
 };
+

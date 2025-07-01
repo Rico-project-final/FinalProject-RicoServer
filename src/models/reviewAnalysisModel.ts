@@ -2,7 +2,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IReviewAnalysis extends Document {
   reviewId: string; // reference to the original review
-  userId: mongoose.Types.ObjectId; // who wrote the review
+  userId: mongoose.Types.ObjectId | null; // who wrote the review
   text: string; // copy of the review text
   category: 'food' | 'service' | 'overall experience';
   sentiment: 'positive' | 'neutral' | 'negative'; // result from AI
@@ -25,7 +25,7 @@ const reviewAnalysisSchema = new Schema<IReviewAnalysis>({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
+    required: false,
   },
   text: {
     type: String,

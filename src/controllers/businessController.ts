@@ -190,6 +190,25 @@ export const sendResponseToCustomer = async (req: Request & { businessId?: strin
   }
 };
 
+// GET - last sync date for a business
+export const getLastSyncDate = async (req: Request & { businessId?: string }, res: Response): Promise<any> => {
+  try {
+    const { businessId } = req;
+    if (!businessId) {
+      return res.status(400).json({ message: 'Missing businessId from request' });
+    }
+    const business = await Business.findById(businessId);
+    if (!business) {
+      return res.status(404).json({ message: 'Business not found' });
+    }
+    const lastSyncDate = business.lastSyncDate || 'No sync date available';
+    res.status(200).json({ lastSyncDate });
+  } catch (error) {
+    console.error('Error fetching last sync date:', error);
+    res.status(500).json({ message: 'Error fetching last sync date', error });
+  }
+};
+
 
 
 export default {
@@ -199,5 +218,6 @@ export default {
   createBusiness,
   updateBusiness,
   deleteBusiness,
-  getQRCodeForBusiness
+  getQRCodeForBusiness,
+  getLastSyncDate
 };

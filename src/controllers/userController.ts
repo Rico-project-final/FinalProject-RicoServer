@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { User } from '../models/userModel';
-import { Review } from '../models/reviewModel';
+import { UserReview } from '../models/userReviewModel';
 import { Task } from '../models/taskModel';
 import mongoose from 'mongoose';
 import { Business } from '../models/BusinessModel';
+import { GoogleReview } from '../models/googleReviewModel';
 
 // Get all customers
 export const getAllUsersNoPage = async (req: Request&{businessId : string}, res: Response): Promise<any> => {
@@ -15,7 +16,7 @@ export const getAllUsersNoPage = async (req: Request&{businessId : string}, res:
     }
 
     // Step 1: Get distinct non-null userIds from reviews
-    const userIds = await Review.distinct('userId', {
+    const userIds = await UserReview.distinct('userId', {
       businessId,
       userId: { $ne: null },
     });
@@ -39,7 +40,7 @@ export const getAllUsers = async (req: Request & { businessId?: string }, res: R
     }
 
     // Step 1: Get distinct non-null userIds from reviews
-    const userIds = await Review.distinct('userId', {
+    const userIds = await UserReview.distinct('userId', {
       businessId,
       userId: { $ne: null },
     });
@@ -143,27 +144,48 @@ const getDashboard = async (req: Request & { businessId?: string }, res: Respons
     }
 
     // Count non-admin users belonging to the business (assuming User has businessId too)
-    const customerIds = await Review.distinct('userId', { businessId });
+    const customerIds = await UserReview.distinct('userId', { businessId });
     const totalClients = customerIds.length;
 
     // Count reviews and tasks for the business
-    const totalReviews = await Review.countDocuments({ businessId });
+    const totalReviews = (await UserReview.countDocuments({ businessId })) + (await GoogleReview.countDocuments({ businessId }));
     const totalTasks = await Task.countDocuments({ businessId });
 
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-    const lastWeekReviews = await Review.find({
+    // Fetch user reviews
+    const userReviews = await UserReview.find({
       businessId,
       createdAt: { $gte: oneWeekAgo }
     })
       .sort({ createdAt: -1 })
-      .limit(10)
-      .populate('userId', 'name email');
+      .populate('userId', 'name email')
+      .lean();
+
+    // Fetch Google reviews
+    const googleReviews = await GoogleReview.find({
+      businessId,
+      createdAt: { $gte: oneWeekAgo }
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Add a `source` field if needed (for display/logic)
+    const combinedReviews = [
+      ...userReviews.map(review => ({ ...review, source: 'user' })),
+      ...googleReviews.map(review => ({ ...review, source: 'google' }))
+    ];
+
+    // Sort all reviews by creation date (newest first)
+    combinedReviews.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+
+    // Limit to 10 reviews total
+    const lastWeekReviews = combinedReviews.slice(0, 10);
 
     const startOfYear = new Date(new Date().getFullYear(), 0, 1);
 
-    const reviewsByMonth = await Review.aggregate([
+    const reviewsByMonth = await UserReview.aggregate([
       { $match: { businessId: new mongoose.Types.ObjectId(businessId), createdAt: { $gte: startOfYear } } },
       {
         $group: {

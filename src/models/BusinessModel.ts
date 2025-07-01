@@ -10,6 +10,7 @@ export interface IBusiness extends Document {
   isGoogleConnected?: boolean; 
   googlePlaceId?: string;   
   googleRefreshToken?: string; 
+  lastSyncDate?: Date;
 }   
 
 const businessSchema = new Schema<IBusiness>(
@@ -23,6 +24,7 @@ const businessSchema = new Schema<IBusiness>(
     isGoogleConnected: { type: Boolean, default: false },
     googlePlaceId: { type: String, default: null }, 
     googleRefreshToken: { type: String, default: null },
+    lastSyncDate: { type: Date, default: null },
 
   },
   { timestamps: true }

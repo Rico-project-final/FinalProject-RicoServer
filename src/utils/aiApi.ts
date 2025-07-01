@@ -1,8 +1,11 @@
 import axios from 'axios';
-import { Review , IReview } from '../models/reviewModel';
+import { UserReview , IUserReview } from '../models/userReviewModel';
 import { IReviewAnalysis, ReviewAnalysis } from '../models/reviewAnalysisModel';
 import { ITask, Task } from '../models/taskModel';
 import mongoose from 'mongoose';
+import { IGoogleReview , GoogleReview} from '../models/googleReviewModel';
+import { IBaseReview } from '../models/baseReviewModel';
+import { User } from '../models/userModel';
 
 interface AIAnalysisResponse {
   category: 'food' | 'service' | 'overall experience';
@@ -100,14 +103,15 @@ class AIAnalysisAPI {
    * @param review The review to analyze
    * @returns The created ReviewAnalysis document
    */
-  async createReviewAnalysis(review: IReview): Promise<IReviewAnalysis> {
+  async createReviewAnalysis(review: IBaseReview): Promise<IReviewAnalysis> {
     try {
       // Analyze the review using OpenAI
       const analysis = await this.analyzeReview(review.text);
 
+      
       // Create a new ReviewAnalysis document
       const reviewAnalysis = new ReviewAnalysis({
-        reviewId: review.id,
+        reviewId: review._id,
         userId: review.userId || null,
         text: review.text,
         category: analysis.category,
@@ -121,8 +125,17 @@ class AIAnalysisAPI {
 
       // Save the document
       await reviewAnalysis.save();
-      await Review.findByIdAndUpdate(review.id, { isAnalyzed: true });
-      
+
+      // Update the original review to mark it as analyzed
+      if (review.source === 'user') {
+        await UserReview.findByIdAndUpdate((<IUserReview>review)._id, { isAnalyzed: true });
+        console.log('User review marked as analyzed:', await UserReview.findById((<IUserReview>review)._id));
+      } else if (review.source === 'google') {
+        await GoogleReview.findByIdAndUpdate((<IGoogleReview>review)._id, { isAnalyzed: true });
+        console.log('Google review marked as analyzed:', await GoogleReview.findById((<IGoogleReview>review)._id));
+
+      }
+    
       // If we have a task recommendation, create a task
       // if (analysis.taskRecommendation) {
       //   await this.createTaskFromRecommendation(
@@ -144,7 +157,7 @@ class AIAnalysisAPI {
    * @param reviews Array of reviews to analyze
    * @returns Array of created ReviewAnalysis documents
    */
-  async batchAnalyzeReviews(reviews: IReview[]): Promise<IReviewAnalysis[]> {
+  async batchAnalyzeReviews(reviews: IBaseReview[]): Promise<IReviewAnalysis[]> {
     try {
       const analysisPromises = reviews.map(review => this.createReviewAnalysis(review));
       return await Promise.all(analysisPromises);

@@ -15,6 +15,7 @@ router.delete('/delete/:businessId', businessController.deleteBusiness);
 
 router.post('/generateQR', businessController.getQRCodeForBusiness);
 router.post('/sendEmailResponse' , businessController.sendResponseToCustomer);
+router.get('/lastSyncDate', businessController.getLastSyncDate);
 
 
 

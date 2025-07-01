@@ -1,12 +1,13 @@
 import { Request, Response } from 'express';
 import { ReviewAnalysis } from '../models/reviewAnalysisModel';
+import { UserReview } from '../models/userReviewModel';
+import { GoogleReview } from '../models/googleReviewModel';
 
 
 interface AuthenticatedRequest extends Request {
   userId?: string;
   businessId?: string;
 }
-//TODO ::  add another method using pagination
 // Get all reviews (admin-only)
 export const getAllReviewsAnalasisNoPage = async (req: AuthenticatedRequest, res: Response): Promise<any> => {
   try {
@@ -91,9 +92,37 @@ export const updateReviewAnalysis = async (req: Request, res: Response):Promise<
         res.status(500).json({ message: 'Error fetching review' });
     }
 }
+
+export const checkReviewAnalysisStatus = async ( req: AuthenticatedRequest, res: Response ): Promise<any> => {
+  try {
+    const { businessId } = req; // comes from middleware or JWT
+
+    if (!businessId) {
+      return res.status(400).json({ message: 'Missing business ID' });
+    }
+
+    const userReviewsCount = await UserReview.countDocuments({ businessId });
+    const googleReviewsCount = await GoogleReview.countDocuments({ businessId });
+    const totalReviews = userReviewsCount + googleReviewsCount;
+
+    const analyzedCount = await ReviewAnalysis.countDocuments({ businessId });
+
+    const allAnalyzed = analyzedCount >= totalReviews;
+
+    return res.status(200).json({ allAnalyzed });
+  } catch (error) {
+    console.error('Error checking review analysis status:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+
+
+
 export default {
     getAllReviewsAnalysis,
     getAllReviewsAnalasisNoPage,
     getAnalasisById,
-    updateReviewAnalysis
-};
+    updateReviewAnalysis,
+    checkReviewAnalysisStatus
+  };

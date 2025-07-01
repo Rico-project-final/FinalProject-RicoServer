@@ -6,9 +6,10 @@ const router = express.Router();
 
 // Protected routes (require authentication, and being admin)
 router.use(authenticateJwt);
+router.get('/status/', reviewAnalysisController.checkReviewAnalysisStatus);
 router.get('/getAll', reviewAnalysisController.getAllReviewsAnalysis);
 router.get('/getAllNoPage', reviewAnalysisController.getAllReviewsAnalasisNoPage);
 router.get('/:reviewId', reviewAnalysisController.getAnalasisById);
-router.post('/update/:reviewId' ,reviewAnalysisController.updateReviewAnalysis );
+router.post('/update/:reviewId', reviewAnalysisController.updateReviewAnalysis);
 
 export default router;

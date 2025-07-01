@@ -1,20 +1,30 @@
 import agenda from './agendaThread';
-import { Review } from '../models/reviewModel';
+import { UserReview } from '../models/userReviewModel';
 import AIAnalysisAPI from '../utils/aiApi'
 import dotenv from 'dotenv';
 import { Job } from 'agenda';
+import { GoogleReview } from '../models/googleReviewModel';
 dotenv.config();
 
 if (!process.env.OPEN_AI_API_KEY) {
   throw new Error('OPEN_AI_API_KEY is not defined in the environment variables.');
 }
+
 const aiAnalysisAPI = new AIAnalysisAPI(process.env.OPEN_AI_API_KEY);
+
+// Define the weekly job to analyze reviews for all businesses
 agenda.define('weekly review analyze', async () => {
   console.log('✅ weekly job running at:', new Date());
-  const Reviews = await Review.find({ isAnalyzed: false });
-  aiAnalysisAPI.batchAnalyzeReviews(Reviews);
+
+  // Analyze all unprocessed user reviews
+  const userReviews = await UserReview.find({ isAnalyzed: false });
+  aiAnalysisAPI.batchAnalyzeReviews(userReviews);
+
+  const googleReviews = await GoogleReview.find({ isAnalyzed: false });
+  aiAnalysisAPI.batchAnalyzeReviews(googleReviews);
 });
 
+// Define the job with businessId to analyze reviews for a specific business
 agenda.define('weekly review analyze', async (job: Job<{ businessId: string }>) => {
   console.log('✅ weekly job running at:', new Date());
 
@@ -25,9 +35,15 @@ agenda.define('weekly review analyze', async (job: Job<{ businessId: string }>) 
     return;
   }
 
-  const reviews = await Review.find({ isAnalyzed: false, businessId });
-  aiAnalysisAPI.batchAnalyzeReviews(reviews);
+  const userReviews = await UserReview.find({ isAnalyzed: false });
+  aiAnalysisAPI.batchAnalyzeReviews(userReviews);
+  console.log('Analyzing reviews:', userReviews.length);
+
+  const googleReviews = await GoogleReview.find({ isAnalyzed: false });
+  aiAnalysisAPI.batchAnalyzeReviews(googleReviews);
+  console.log('Analyzing reviews:', googleReviews.length);
 });
+
 
 (async () => {
    await agenda.start();
