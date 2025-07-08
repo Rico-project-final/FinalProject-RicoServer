@@ -2,12 +2,57 @@ import { Request, Response } from 'express';
 import { Task } from '../models/taskModel';
 
 // GET all tasks
-export const getAllTasks = async (req: Request& { userId?: string }, res: Response):Promise<any> => {
+export const getAllTasksNoPage = async (req: Request, res: Response): Promise<any> => {
   try {
-    const tasks = await Task.find({}).populate('relatedReview');
+    // @ts-ignore - businessId is injected via JWT middleware
+    const businessId = req.businessId;
+
+    if (!businessId) {
+      return res.status(400).json({ message: 'Missing businessId from request' });
+    }
+
+    const tasks = await Task.find({ businessId }).populate('relatedReview');
+
     res.status(200).json(tasks);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching tasks', error });
+    console.error('Get all tasks error:', error);
+    res.status(500).json({ message: 'Error fetching tasks' });
+  }
+};
+//Another get all with pagination
+export const getAllTasks = async (req: Request&{businessId? : string}, res: Response): Promise<any> => {
+  try {
+    
+    const businessId = req.businessId;
+
+    if (!businessId) {
+      return res.status(400).json({ message: 'Missing businessId from request' });
+    }
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const [tasks, total] = await Promise.all([
+      Task.find({ businessId })
+        .populate('relatedReview')
+        .skip(skip)
+        .limit(limit),
+      Task.countDocuments({ businessId })
+    ]);
+
+    res.status(200).json({
+      tasks,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error('Get all tasks error:', error);
+    res.status(500).json({ message: 'Error fetching tasks' });
   }
 };
 
@@ -26,10 +71,12 @@ export const getTaskById = async (req: Request& { userId?: string }, res: Respon
 };
 
 // CREATE new task
-export const createTask = async (req: Request& { userId?: string }, res: Response):Promise<any> => {
+export const createTask = async (req: Request& { businessId?:string,userId?: string }, res: Response):Promise<any> => {
   const { title, description, relatedReview, dueDate, priority } = req.body;
+  const businessId = req.businessId;
   try {
     const newTask = new Task({
+      businessId,
       title,
       description,
       relatedReview,
@@ -97,6 +144,7 @@ export const completeTask = async (req: Request& { userId?: string }, res: Respo
 
 export default {
   getAllTasks,
+  getAllTasksNoPage,
   getTaskById,
   createTask,
   updateTask,

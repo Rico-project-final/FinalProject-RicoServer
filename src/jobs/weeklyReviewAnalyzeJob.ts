@@ -1,7 +1,8 @@
 import agenda from './agendaThread';
 import { Review } from '../models/reviewModel';
-import AIAnalysisAPI from '../helpers/aiApi'
+import AIAnalysisAPI from '../utils/aiApi'
 import dotenv from 'dotenv';
+import { Job } from 'agenda';
 dotenv.config();
 
 if (!process.env.OPEN_AI_API_KEY) {
@@ -14,6 +15,19 @@ agenda.define('weekly review analyze', async () => {
   aiAnalysisAPI.batchAnalyzeReviews(Reviews);
 });
 
+agenda.define('weekly review analyze', async (job: Job<{ businessId: string }>) => {
+  console.log('✅ weekly job running at:', new Date());
+
+  const { businessId } = job.attrs.data || {};
+
+  if (!businessId) {
+    console.warn('No businessId provided — skipping');
+    return;
+  }
+
+  const reviews = await Review.find({ isAnalyzed: false, businessId });
+  aiAnalysisAPI.batchAnalyzeReviews(reviews);
+});
 
 (async () => {
    await agenda.start();

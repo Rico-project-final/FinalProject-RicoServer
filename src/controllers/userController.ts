@@ -2,16 +2,74 @@ import { Request, Response } from 'express';
 import { User } from '../models/userModel';
 import { Review } from '../models/reviewModel';
 import { Task } from '../models/taskModel';
+import mongoose from 'mongoose';
+import { Business } from '../models/BusinessModel';
 
-// Get all users (for admin or system use)
-export const getAllUsers = async (req: Request, res: Response): Promise<any> => {
-    try {
-        const users = await User.find().select('-password');
-        res.status(200).json(users);
-    } catch (error) {
-        console.error('Get all users error:', error);
-        res.status(500).json({ message: 'Error fetching users' });
+// Get all customers
+export const getAllUsersNoPage = async (req: Request&{businessId : string}, res: Response): Promise<any> => {
+  try {
+    const businessId = req.businessId;
+
+    if (!businessId) {
+      return res.status(400).json({ message: 'Missing businessId from request' });
     }
+
+    // Step 1: Get distinct non-null userIds from reviews
+    const userIds = await Review.distinct('userId', {
+      businessId,
+      userId: { $ne: null },
+    });
+
+    // Step 2: Fetch user documents for those IDs
+    const users = await User.find({ _id: { $in: userIds } }).select('-password'); // Exclude sensitive fields
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({ message: 'Error fetching users' });
+  }
+};
+//Another get all with pagination
+export const getAllUsers = async (req: Request & { businessId?: string }, res: Response): Promise<any> => {
+  try {
+    const businessId = req.businessId;
+
+    if (!businessId) {
+      return res.status(400).json({ message: 'Missing businessId from request' });
+    }
+
+    // Step 1: Get distinct non-null userIds from reviews
+    const userIds = await Review.distinct('userId', {
+      businessId,
+      userId: { $ne: null },
+    });
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    // Step 2: Paginate user documents
+    const [users, total] = await Promise.all([
+      User.find({ _id: { $in: userIds } })
+        .select('-password')
+        .skip(skip)
+        .limit(limit),
+      User.countDocuments({ _id: { $in: userIds } })
+    ]);
+
+    res.status(200).json({
+      users,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({ message: 'Error fetching users' });
+  }
 };
 
 // Get specific user by ID (public or protected, depending on route use)
@@ -76,26 +134,37 @@ export const deleteProfile = async (req: Request & { userId?: string }, res: Res
         res.status(500).json({ message: 'Error deleting profile' });
     }
 };
-const getDashboard = async (req: Request & { userId?: string }, res: Response): Promise<any> => {
-    try{
-        const totalClients = await User.countDocuments({ role: { $ne: 'admin' } });
-        const totalReviews = await Review.countDocuments();
-        const totalTasks = await Task.countDocuments();
-        
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-        const lastWeekReviews = await Review.find({
-        createdAt: { $gte: oneWeekAgo }
-        }).sort({ createdAt: -1 }).limit(10).populate('userId', 'name email');
+const getDashboard = async (req: Request & { businessId?: string }, res: Response): Promise<any> => {
+  try {
+    const businessId = req.businessId;
+    if (!businessId) {
+      return res.status(400).json({ message: 'Missing businessId from request' });
+    }
+
+    // Count non-admin users belonging to the business (assuming User has businessId too)
+    const customerIds = await Review.distinct('userId', { businessId });
+    const totalClients = customerIds.length;
+
+    // Count reviews and tasks for the business
+    const totalReviews = await Review.countDocuments({ businessId });
+    const totalTasks = await Task.countDocuments({ businessId });
+
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    const lastWeekReviews = await Review.find({
+      businessId,
+      createdAt: { $gte: oneWeekAgo }
+    })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate('userId', 'name email');
 
     const startOfYear = new Date(new Date().getFullYear(), 0, 1);
+
     const reviewsByMonth = await Review.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: startOfYear }
-        }
-      },
+      { $match: { businessId: new mongoose.Types.ObjectId(businessId), createdAt: { $gte: startOfYear } } },
       {
         $group: {
           _id: {
@@ -114,12 +183,12 @@ const getDashboard = async (req: Request & { userId?: string }, res: Response): 
         name: months[i],
         food: 0,
         service: 0,
-        experience: 0,
+        overall: 0,  
       });
     }
 
     reviewsByMonth.forEach(item => {
-      const index = item._id.month - 1; 
+      const index = item._id.month - 1;
       chartData[index][item._id.category] = item.count;
     });
 
@@ -131,13 +200,14 @@ const getDashboard = async (req: Request & { userId?: string }, res: Response): 
       chartData,
     });
 
-    }catch (error) {
-        console.error('Get dashboard error:', error);
-        res.status(500).json({ message: 'Error fetching dashboard' });
-    }
-}
+  } catch (error) {
+    console.error('Get dashboard error:', error);
+    res.status(500).json({ message: 'Error fetching dashboard' });
+  }
+};
 export default {
     getAllUsers,
+    getAllUsersNoPage,
     getUserById,
     getProfile,
     updateProfile,

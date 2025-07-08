@@ -2,96 +2,153 @@ import { Request, Response } from 'express';
 import { Review } from '../models/reviewModel';
 import agenda from '../jobs/agendaThread';
 
-// Create a review (guest or authenticated user)
-export const createReview = async (req: Request & { userId?: string }, res: Response):Promise<any> => {
-    try {
-        const { text, category } = req.body;
+// Add types for requests with businessId and userId
+interface AuthenticatedRequest extends Request {
+  userId?: string;
+  businessId?: string;
+}
 
-        if (!text) {
-            return res.status(400).json({ message: 'Missing required field: text' });
-        }
-        const review = new Review({
-            userId: req.userId || null,
-            text,
-            category
-        });
-
-        await review.save();
-        res.status(201).json({ message: 'Review created successfully', review });
-    } catch (error) {
-        console.error('Create review error:', error);
-        res.status(500).json({ message: 'Error creating review' });
-    }
-};
-
-// Get all reviews (admin-only)
-export const getAllReviews = async (req: Request, res: Response):Promise<any> => {
-    try {
-        const reviews = await Review.find().populate('userId', 'name email');
-        res.status(200).json(reviews);
-    } catch (error) {
-        console.error('Get all reviews error:', error);
-        res.status(500).json({ message: 'Error fetching reviews' });
-    }
-};
-
-
-
-export const triggerWeeklyAnalyze = async (req: Request, res: Response): Promise<any> => {
+// Create a review
+export const createReview = async (req: AuthenticatedRequest, res: Response): Promise<any> => {
   try {
-    
+    const { text, category, businessId  } = req.body;
+    const { userId} = req;
 
-      await agenda.now("weekly review analyze", {});
-    
+    if (!text) {
+      return res.status(400).json({ message: 'Missing required field: text' });
+    }
 
-    res.status(200).json({
-      message: `Triggered weekly review analyze`,
+    if (!businessId) {
+      return res.status(400).json({ message: 'Missing businessId from request' });
+    }
+
+    const review = new Review({
+      userId: userId ,
+      text,
+      category,
+      businessId
     });
+
+    await review.save();
+    res.status(201).json({ message: 'Review created successfully', review });
   } catch (error) {
-    console.error('Trigger Agenda jobs error:', error);
-    res.status(500).json({ message: 'Error triggering Agenda jobs' });
+    console.error('Create review error:', error);
+    res.status(500).json({ message: 'Error creating review' });
   }
 };
 
-
-// Get a review by ID (admin-only)
-export const getReviewById = async (req: Request, res: Response):Promise<any> => {
-    try {
-        const { reviewId } = req.params;
-
-        const review = await Review.findById(reviewId).populate('userId', 'name email');
-        if (!review) {
-            return res.status(404).json({ message: 'Review not found' });
-        }
-
-        res.status(200).json(review);
-    } catch (error) {
-        console.error('Get review by ID error:', error);
-        res.status(500).json({ message: 'Error fetching review' });
+// Get all reviews for a specific business
+export const getAllReviewsNoPage = async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  try {
+    const { businessId } = req;
+ 
+    if (!businessId) {
+        console.error('Missing businessId from request');
+      return res.status(400).json({ message: 'Missing businessId from request' });
     }
+
+    const reviews = await Review.find({ businessId : businessId }).populate('userId', 'name email');
+
+    res.status(200).json(reviews);
+  } catch (error) {
+    console.error('Get all reviews error:', error);
+    res.status(500).json({ message: 'Error fetching reviews' });
+  }
+};
+//Another get all with pagination
+export const getAllReviews = async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  try {
+    const { businessId } = req;
+
+    if (!businessId) {
+      console.error('Missing businessId from request');
+      return res.status(400).json({ message: 'Missing businessId from request' });
+    }
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const [reviews, total] = await Promise.all([
+      Review.find({ businessId })
+        .populate('userId', 'name email')
+        .skip(skip)
+        .limit(limit),
+      Review.countDocuments({ businessId })
+    ]);
+
+    res.status(200).json({
+      reviews,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error('Get all reviews error:', error);
+    res.status(500).json({ message: 'Error fetching reviews' });
+  }
 };
 
-// Delete a review by ID (admin-only)
-export const deleteReviewById = async (req: Request, res: Response):Promise<any> => {
-    try {
-        const { reviewId } = req.params;
+// Trigger weekly analyze
+export const triggerWeeklyAnalyze = async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  try {
+    const { businessId } = req;
 
-        const review = await Review.findByIdAndDelete(reviewId);
-        if (!review) {
-            return res.status(404).json({ message: 'Review not found' });
-        }
-
-        res.status(200).json({ message: 'Review deleted successfully' });
-    } catch (error) {
-        console.error('Delete review error:', error);
-        res.status(500).json({ message: 'Error deleting review' });
+    if (!businessId) {
+      return res.status(400).json({ message: "Missing businessId in request body" });
     }
+
+    await agenda.now("weekly review analyze", { businessId });
+
+    res.status(200).json({ message: `Triggered weekly review analyze for businessId: ${businessId}` });
+  } catch (error) {
+    console.error("Trigger Agenda jobs error:", error);
+    res.status(500).json({ message: "Error triggering Agenda jobs" });
+  }
+};
+
+// Get a review by ID
+export const getReviewById = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { reviewId } = req.params;
+
+    const review = await Review.findById(reviewId).populate('userId', 'name email');
+    if (!review) {
+      return res.status(404).json({ message: 'Review not found' });
+    }
+
+    res.status(200).json(review);
+  } catch (error) {
+    console.error('Get review by ID error:', error);
+    res.status(500).json({ message: 'Error fetching review' });
+  }
+};
+
+// Delete a review by ID
+export const deleteReviewById = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { reviewId } = req.params;
+
+    const review = await Review.findByIdAndDelete(reviewId);
+    if (!review) {
+      return res.status(404).json({ message: 'Review not found' });
+    }
+
+    res.status(200).json({ message: 'Review deleted successfully' });
+  } catch (error) {
+    console.error('Delete review error:', error);
+    res.status(500).json({ message: 'Error deleting review' });
+  }
 };
 
 export default {
-    createReview,
-    getAllReviews,
-    getReviewById,
-    deleteReviewById,
-    triggerWeeklyAnalyze
+  createReview,
+  getAllReviews,
+  getAllReviewsNoPage,
+  getReviewById,
+  deleteReviewById,
+  triggerWeeklyAnalyze
 };

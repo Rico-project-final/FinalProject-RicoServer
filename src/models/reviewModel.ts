@@ -6,6 +6,8 @@ userId?: mongoose.Types.ObjectId | null;
 text : string;
 category?: 'food' | 'service' | 'overall';
 isAnalyzed: boolean;
+businessId: mongoose.Types.ObjectId;
+
 }
 
 const reviewSchema = new Schema<IReview>({
@@ -28,6 +30,7 @@ isAnalyzed: {
     type: Boolean,
     default: false,
   },
+businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true }
 }, {
     timestamps: true
 })
