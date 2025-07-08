@@ -1,7 +1,7 @@
 import agenda from './agendaThread';
 import {Task} from '../models/taskModel';
-import { getSocket } from '../socket'; // adjust path
-const io = getSocket(); // get the socket instance
+// import { getSocket } from '../socket'; // adjust path
+// const io = getSocket(); // get the socket instance
 
 agenda.define('daily task manager', async () => {
     const now = new Date();
@@ -26,14 +26,14 @@ agenda.define('daily task manager', async () => {
       (task.priority === 'medium' && daysUntilDue <= 3 && daysUntilDue >= 0) ||
       (task.priority === 'low' && due >= todayStart && due <= todayEnd);
 
-    if (shouldRemind) {
-      io.to(adminId).emit('taskReminder', {
-        taskId: task._id,
-        title: task.title,
-        dueDate: task.dueDate,
-        priority: task.priority
-      });
-    }
+    // if (shouldRemind) {
+    //   io.to(adminId).emit('taskReminder', {
+    //     taskId: task._id,
+    //     title: task.title,
+    //     dueDate: task.dueDate,
+    //     priority: task.priority
+    //   });
+    // }
   });
 
   console.log(`🔔 Task reminders checked and emitted.`);

@@ -18,6 +18,7 @@ initApp().then(async ({app , server}) => {
   });
 }
 else{
+  console.log("running in prod")
   const prop = {
      key : fs.readFileSync(path.join(__dirname, '../certs/myserver.key')),
      cert : fs.readFileSync(path.join(__dirname, '../certs/CSB.crt'))

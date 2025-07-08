@@ -21,7 +21,7 @@ const server = http.createServer(app); // Create HTTP server to handle socket.io
 
 // Middleware
 app.use(cors({
-  origin: ["0.0.0.0",process.env.DOMAIN_URL || 'http://localhost:5173'],
+  origin: ["0.0.0.0",process.env.DOMAIN_URL!!],
   credentials: true,
 }));
 app.use(express.json());
@@ -61,7 +61,7 @@ const specs = swaggerJsDoc(options);
 app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(specs));
 app.use(express.static(path.resolve(__dirname , '..' , 'front')))
 
-app.use(`/*splat` , (req,res)=>{
+app.use(`*` , (req,res)=>{
   res.sendFile(path.resolve(__dirname, '..', 'front', 'index.html'))
 })
 
