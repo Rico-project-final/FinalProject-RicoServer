@@ -61,7 +61,7 @@ const specs = swaggerJsDoc(options);
 app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(specs));
 app.use(express.static(path.resolve(__dirname , '..' , 'front')))
 
-app.use(`*` , (req,res)=>{
+app.use(`/*splat` , (req,res)=>{
   res.sendFile(path.resolve(__dirname, '..', 'front', 'index.html'))
 })
 

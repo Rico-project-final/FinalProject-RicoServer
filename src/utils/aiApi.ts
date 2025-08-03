@@ -46,10 +46,10 @@ class AIAnalysisAPI {
                 Analyze the review and provide the following:
                 1. Categorize the review as 'food', 'service', or 'overall experience'
                 2. Determine the sentiment as 'positive', 'neutral', or 'negative'
-                3. Provide a brief analysis summary
-                4. If there's a recurring issue, suggest improvements
-                5. Generate a thoughtful response that the admin could send to the customer
-                6. Create a specific task recommendation for the restaurant manager that addresses the feedback:
+                3. Provide a brief analysis summary in hebrew language
+                4. If there's a recurring issue, suggest improvements in hebrew language
+                5. Generate a thoughtful response that the admin could send to the customer in hebrew language
+                6. Create a specific task recommendation for the restaurant manager in hebrew language, that addresses the feedback:
                    - For negative reviews: create a task to fix the issue
                    - For positive reviews: create a task to maintain or enhance the praised aspect
                    - For neutral reviews: create a task to improve the experience if applicable

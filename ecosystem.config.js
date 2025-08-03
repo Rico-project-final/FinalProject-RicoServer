@@ -3,7 +3,7 @@ module.exports = {
     name   : "RicoServer",
     script : "dist/app.js",
     env_production: {
-      NODE_ENV: "production",
+      NODE_ENV: "prod",
       PORT: 443
     },
   }]
