@@ -119,7 +119,9 @@ export const businessGoogleSignIn = async (req: Request, res: Response): Promise
 
     //HERE Google end his job
     let user = await User.findOne({ email });
-
+    if(user && user.role === "customer"){
+      return res.status(403).json({ error: 'cannot sign customer with business, please use another email' });
+    }
         const newBusiness = new Business({
         BusinessName: businessName,
         phone,
@@ -127,7 +129,6 @@ export const businessGoogleSignIn = async (req: Request, res: Response): Promise
       });
 
       const savedBusiness = await newBusiness.save();
-
 
     if (!user) {
       const randomPassword = Math.random().toString(36).slice(-8);
