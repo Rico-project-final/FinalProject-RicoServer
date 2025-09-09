@@ -302,17 +302,17 @@ export const login = async (req: LoginRequest, res: Response): Promise<any> => {
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: 'email or password incorrect' });
+      return res.status(401).json({ message: 'אימייל או סיסמא לא נכונים' });
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'email or password incorrect' });
+      return res.status(401).json({ message: 'אימייל או סיסמא לא נכונים' });
     }
     
     // 🚫 Block unverified
     if (!user.emailVerified) {
-      return res.status(403).json({ message: 'Please verify your email before logging in.' });
+      return res.status(403).json({ message: 'יש לאמת את האימייל לפני ההתחברות.' });
     }
 
     const accessToken = generateAccessToken(
@@ -352,7 +352,7 @@ export const verifyEmail = async (req: Request, res: Response): Promise<any> => 
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     if (user.emailVerified) {
-      return res.status(400).json({ message: 'Email is already verified' });
+      return res.status(400).json({ message: 'אימייל זה כבר אומת!' });
     }
 
     // ✅ Mark as verified
@@ -373,7 +373,7 @@ export const verifyEmail = async (req: Request, res: Response): Promise<any> => 
     );
 
     return res.status(200).json({
-      message: 'Email verified successfully. You are now logged in.',
+      message: 'האימייל אומת בהצלחה, מייד תועבר לעמוד הבא!.',
       user,
       accessToken,
     });
@@ -384,12 +384,12 @@ export const verifyEmail = async (req: Request, res: Response): Promise<any> => 
       try {
         const expiredPayload = jwt.decode(token) as { userId: string } | null;
         if (!expiredPayload?.userId) {
-          return res.status(400).json({ message: 'Token expired and user could not be identified.' });
+          return res.status(400).json({ message: 'טוקן הזדהות פג תוקף, לא ניתן לאמת משתמש זה.' });
         }
 
         const user = await User.findById(expiredPayload.userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
-        if (user.emailVerified) return res.status(400).json({ message: 'Email is already verified' });
+        if (user.emailVerified) return res.status(400).json({ message: 'אימייל זה כבר אומת!' });
 
         const newToken = generateEmailVerificationToken(user._id.toString());
         const newLink = `${process.env.DOMAIN_URL}/verifyEmail?token=${newToken}`;
@@ -401,7 +401,7 @@ export const verifyEmail = async (req: Request, res: Response): Promise<any> => 
         });
 
         return res.status(400).json({
-          message: 'Verification link expired. A new verification email has been sent.',
+          message: 'לינק האימות פג תוקף. לינק חדש לאימות האימייל נשלח.',
         });
       } catch (reissueError) {
         console.error('Failed to re-send verification email:', reissueError);
