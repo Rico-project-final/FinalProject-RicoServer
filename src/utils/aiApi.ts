@@ -37,7 +37,7 @@ class AIAnalysisAPI {
       const response = await axios.post(
         this.apiUrl,
         {
-          model: "gpt-4-turbo", // or another appropriate OpenAI model
+          model: "gpt-4-turbo",
           messages: [
             {
               role: "system",
