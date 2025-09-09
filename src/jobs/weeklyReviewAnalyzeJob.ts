@@ -15,8 +15,8 @@ agenda.define('weekly review analyze', async () => {
   aiAnalysisAPI.batchAnalyzeReviews(Reviews);
 });
 
-agenda.define('weekly review analyze', async (job: Job<{ businessId: string }>) => {
-  console.log('✅ weekly job running at:', new Date());
+agenda.define('trigger review analyze', async (job: Job<{ businessId: string }>) => {
+  console.log('✅ triggered job running at:', new Date());
 
   const { businessId } = job.attrs.data || {};
 

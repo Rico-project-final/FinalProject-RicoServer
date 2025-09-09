@@ -10,6 +10,7 @@ router.post('/create', optionalAuthenticateJwt,  reviewController.createReview);
 // Protected routes (require authentication, and being admin)
 router.use(authenticateJwt);
 router.get('/getAll', reviewController.getAllReviews);
+router.get('/getByUser/:userId' , reviewController.getAllUserReviews)
 router.get('/:reviewId', reviewController.getReviewById);
 router.delete('/delete/:reviewId', reviewController.deleteReviewById);
 router.post('/triggerAll', reviewController.triggerWeeklyAnalyze);

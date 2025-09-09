@@ -18,7 +18,7 @@ const businessSchema = new Schema<IBusiness>(
     reviews: [{ type: Schema.Types.ObjectId, ref: 'Review' }],
     address: { type: String },
     phone: { type: String },
-    ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    ownerId: { type: Schema.Types.ObjectId, ref: 'User'},
 
     isGoogleConnected: { type: Boolean, default: false },
     googlePlaceId: { type: String, default: null }, 

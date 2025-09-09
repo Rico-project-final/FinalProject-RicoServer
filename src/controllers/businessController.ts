@@ -155,7 +155,7 @@ export const sendResponseToCustomer = async (req: Request & { businessId?: strin
     if (!email || !text) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
-
+    console.log(businessId)
     // ✅ Fetch the business and its owner
     const business = await Business.findById(businessId).populate('ownerId');
     if (!business || !business.ownerId) {

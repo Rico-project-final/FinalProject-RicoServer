@@ -43,7 +43,7 @@ class AIAnalysisAPI {
               role: "system",
               content: `
                 You are an AI assistant that analyzes customer reviews for a restaurant application.
-                Analyze the review and provide the following:
+                Limit the response to match max_tokens of 1000 and analyze the review and provide the following:
                 1. Categorize the review as 'food', 'service', or 'overall experience'
                 2. Determine the sentiment as 'positive', 'neutral', or 'negative'
                 3. Provide a brief analysis summary in hebrew language
@@ -76,7 +76,8 @@ class AIAnalysisAPI {
             }
           ],
           temperature: 0.2,
-          max_tokens: 500
+          max_tokens: 1000,
+          response_format: { type: "json_object" } // 👈 forces strict JSON
         },
         {
           headers: {
